@@ -43,6 +43,8 @@ def run_backtest(
     result["Position"] = result["Signal"].shift(1).fillna(0.0)
     # Compare both approaches only once the slow SMA is available.
     first_valid = result["Slow SMA"].first_valid_index()
+    if first_valid is None:
+        raise ValueError(f"Not enough price history for the slow window ({slow_window} bars required).")
     result = result.loc[first_valid:].copy()
     result["Market Return"] = result["Close"].pct_change().fillna(0.0)
     result["Trades"] = result["Position"].diff().abs().fillna(result["Position"].abs())
