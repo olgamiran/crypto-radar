@@ -22,3 +22,25 @@ def test_fast_must_be_less_than_slow():
 def test_missing_close_is_rejected():
     with pytest.raises(ValueError):
         run_backtest(pd.DataFrame({"Open": [1, 2, 3]}))
+
+
+
+def test_backtest_aligns_benchmark_after_sma_warmup_and_models_slippage():
+    prices = sample_prices(days=120)
+    result, metrics = run_backtest(prices, fast_window=5, slow_window=15, fee_pct=0.1, slippage_pct=0.2)
+    assert result.index.min() >= prices.index[14]
+    assert len(result["Strategy Equity"]) == len(result["Buy & Hold Equity"])
+    assert metrics["comparison_bars"] == len(result)
+    assert metrics["buy_hold_max_drawdown"] <= 0
+    assert metrics["total_trading_costs_pct_initial_equity"] >= 0
+
+
+def test_backtest_rejects_invalid_slippage():
+    with pytest.raises(ValueError, match="Slippage"):
+        run_backtest(sample_prices(days=80), fast_window=5, slow_window=15, slippage_pct=float("nan"))
+
+
+def test_backtest_rejects_non_positive_prices():
+    prices = pd.DataFrame({"Close": [0, -1, 2]}, index=pd.date_range("2025-01-01", periods=3))
+    with pytest.raises(ValueError, match="positive prices"):
+        run_backtest(prices)
