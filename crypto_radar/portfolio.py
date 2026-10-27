@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from typing import Any
+import math
 
 import pandas as pd
 
@@ -19,13 +20,13 @@ def build_portfolio_snapshot(
     BUY/SELL move cash and units; REWARD adds units without spending principal;
     FEE records a cash expense. All values are hypothetical USD amounts.
     """
-    if starting_cash < 0:
-        raise ValueError("Starting cash must be zero or greater.")
+    if not math.isfinite(float(starting_cash)) or starting_cash < 0:
+        raise ValueError("Starting cash must be a finite number that is zero or greater.")
 
     prices = current_prices or {}
     for asset, price in prices.items():
-        if not asset or float(price) < 0:
-            raise ValueError("Current prices must have an asset name and non-negative value.")
+        if not asset or not math.isfinite(float(price)) or float(price) < 0:
+            raise ValueError("Current prices must have an asset name and finite non-negative value.")
 
     cash = float(starting_cash)
     holdings: dict[str, float] = {}
@@ -43,8 +44,8 @@ def build_portfolio_snapshot(
 
         if tx_type not in _TRANSACTION_TYPES:
             raise ValueError(f"Transaction {index}: unsupported type.")
-        if fee < 0 or quantity < 0 or price < 0:
-            raise ValueError(f"Transaction {index}: quantity, price, and fee must be non-negative.")
+        if not all(math.isfinite(value) for value in (quantity, price, fee)) or fee < 0 or quantity < 0 or price < 0:
+            raise ValueError(f"Transaction {index}: quantity, price, and fee must be finite and non-negative.")
         if tx_type != "FEE" and not asset:
             raise ValueError(f"Transaction {index}: asset is required.")
         if tx_type in {"BUY", "SELL", "REWARD"} and quantity <= 0:
