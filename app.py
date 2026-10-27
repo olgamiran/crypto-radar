@@ -293,6 +293,17 @@ with yield_tab:
     st.write("Compare common ways people seek crypto-related returns. This is a general risk-research catalogue, not a list of live offers or a recommendation.")
     st.warning("No live APY values are shown. Advertised rates can change quickly and do not guarantee a positive total return.")
 
+    with st.expander("Where to verify current rates and protocol terms"):
+        st.markdown("""
+        - [DeFiLlama Yields](https://defillama.com/yields) — compare DeFi pool rates; inspect chain, pool composition, liquidity, and methodology.
+        - [Ethereum staking documentation](https://ethereum.org/en/staking/) — primary-source overview of native ETH staking mechanics and risks.
+        - [Solana staking documentation](https://solana.com/staking) — primary-source overview of SOL staking.
+        - [Aave documentation](https://docs.aave.com/) — primary protocol documentation for lending markets and risk parameters.
+        - [Uniswap documentation](https://docs.uniswap.org/) — primary protocol documentation for liquidity pools and impermanent-loss considerations.
+
+        Rates are intentionally not copied into this app: providers can change them and APY figures are not directly comparable. When evaluating a rate, record the source URL, observation date/time, chain, exact pool/product, token pair, lock-up, fees, and whether incentives are included.
+        """)
+
     category = st.selectbox("Filter by mechanism", get_categories(), key="yield_category_filter")
     methods = get_research_methods(category)
     summary = pd.DataFrame([
