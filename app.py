@@ -142,13 +142,15 @@ with portfolio_tab:
             for index, asset in enumerate(held_assets):
                 last_price = float(base_snapshot["positions"].loc[base_snapshot["positions"]["asset"] == asset, "price_usd"].iloc[0])
                 with price_cols[index % len(price_cols)]:
+                    mark_key = f"portfolio_mark_{asset}"
+                    if mark_key not in st.session_state:
+                        st.session_state[mark_key] = last_price
                     current_prices[asset] = st.number_input(
                         f"{asset} price (USD)",
                         min_value=0.0,
                         max_value=1_000_000_000.0,
-                        value=last_price,
                         step=max(last_price * 0.01, 0.01),
-                        key=f"portfolio_mark_{asset}",
+                        key=mark_key,
                     )
         snapshot = build_portfolio_snapshot(starting_cash, transactions, current_prices)
 
