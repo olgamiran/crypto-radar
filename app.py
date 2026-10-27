@@ -148,6 +148,10 @@ with portfolio_tab:
         st.session_state["portfolio_transactions"] = []
     if "portfolio_starting_cash" not in st.session_state:
         st.session_state["portfolio_starting_cash"] = 10000.0
+    if "portfolio_pending_restore" in st.session_state:
+        pending = st.session_state.pop("portfolio_pending_restore")
+        st.session_state["portfolio_transactions"] = pending["transactions"]
+        st.session_state["portfolio_starting_cash"] = pending["starting_cash"]
 
     starting_cash = st.number_input(
         "Starting virtual cash (USD)",
@@ -169,9 +173,8 @@ with portfolio_tab:
             restored_cash = float(restored["starting_cash"])
             restored_transactions = restored["transactions"]
             build_portfolio_snapshot(restored_cash, restored_transactions)
-            st.session_state["portfolio_transactions"] = restored_transactions
-            st.session_state["portfolio_starting_cash"] = restored_cash
-            st.success("Backup validated and restored for this session.")
+            st.session_state["portfolio_pending_restore"] = {"starting_cash": restored_cash, "transactions": restored_transactions}
+            st.success("Backup validated. Applying restored portfolio...")
             st.rerun()
         except (ValueError, TypeError, KeyError, json.JSONDecodeError) as error:
             st.error(f"Could not restore backup: {error}")
