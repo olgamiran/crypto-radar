@@ -7,6 +7,8 @@ from crypto_radar.backtest import run_backtest
 from crypto_radar.data import SYMBOLS, fetch_prices
 from crypto_radar.income import build_scenarios, calculate_income_scenario
 from crypto_radar.portfolio import build_portfolio_snapshot
+from crypto_radar.paper_trading import simulate_sma_paper_trades
+import json
 from crypto_radar.yield_research import get_categories, get_research_methods
 
 st.set_page_config(page_title="Crypto Radar", page_icon="📡", layout="wide")
@@ -29,8 +31,9 @@ with st.sidebar:
     fast_window = st.slider("Fast SMA (days)", min_value=2, max_value=100, value=20)
     slow_window = st.slider("Slow SMA (days)", min_value=3, max_value=250, value=50)
     fee_pct = st.number_input("Fee per position change (%)", min_value=0.0, max_value=5.0, value=0.1, step=0.05)
+    slippage_pct = st.number_input("Estimated slippage per change (%)", min_value=0.0, max_value=5.0, value=0.05, step=0.05)
 
-market_tab, income_tab, portfolio_tab, yield_tab = st.tabs(["📊 Market & backtest", "🧪 Crypto Income Lab", "💼 Virtual Portfolio", "🔎 Yield Research"])
+market_tab, paper_tab, income_tab, portfolio_tab, yield_tab = st.tabs(["📊 Market & backtest", "🧾 Paper Trading", "🧪 Crypto Income Lab", "💼 Virtual Portfolio", "🔎 Yield Research"])
 
 with market_tab:
     prices, source_label = load_market_prices(symbol, period)
@@ -38,7 +41,7 @@ with market_tab:
     if fast_window >= slow_window:
         st.warning("Fast SMA must be smaller than Slow SMA. Adjust the sliders to run the backtest.")
     else:
-        result, metrics = run_backtest(prices, fast_window, slow_window, fee_pct)
+        result, metrics = run_backtest(prices, fast_window, slow_window, fee_pct, slippage_pct)
         latest = float(prices["Close"].iloc[-1])
         previous = float(prices["Close"].iloc[-2]) if len(prices) > 1 else latest
         change = (latest / previous - 1) * 100 if previous else 0
@@ -60,6 +63,8 @@ with market_tab:
         m2.metric("Annualized volatility", f"{metrics['annualized_volatility']:.2%}")
         m3.metric("CAGR", f"{metrics['cagr']:.2%}")
         m4.metric("Position changes", f"{int(metrics['trade_count'])}")
+        st.caption(f"Fair comparison window: {metrics['comparison_start']} – {metrics['comparison_end']} ({int(metrics['comparison_bars'])} candles). Costs include fees and estimated slippage.")
+        st.metric("Buy & Hold max drawdown", f"{metrics['buy_hold_max_drawdown']:.2%}")
 
         st.subheader("Latest data")
         st.dataframe(result.tail(20).sort_index(ascending=False), use_container_width=True)
@@ -73,6 +78,26 @@ with market_tab:
             - Fees are a simplified estimate; spread, slippage, taxes, funding, and real execution are not modeled.
             - Historical performance does not predict future results. This app does not place trades or connect to exchange accounts.
             """)
+
+with paper_tab:
+    st.subheader("Signal-driven Paper Trading")
+    st.write("Simulate historical SMA signals with virtual cash. This does not place orders or connect to an exchange.")
+    paper_cash = st.number_input("Paper trading starting cash (USD)", min_value=0.0, max_value=1_000_000_000.0, value=10000.0, step=500.0, key="paper_starting_cash")
+    if fast_window >= slow_window:
+        st.warning("Set Fast SMA below Slow SMA in the sidebar.")
+    else:
+        paper_equity, paper_trades, paper_metrics = simulate_sma_paper_trades(prices, fast_window, slow_window, paper_cash, fee_pct, slippage_pct)
+        pc1, pc2, pc3, pc4 = st.columns(4)
+        pc1.metric("Final virtual equity", f"${paper_metrics['final_equity']:,.2f}")
+        pc2.metric("Profit / loss", f"${paper_metrics['profit_loss']:,.2f}", f"{paper_metrics['return_pct']:+.2f}%")
+        pc3.metric("Max drawdown", f"{paper_metrics['max_drawdown']:.2%}")
+        pc4.metric("Simulated trades", f"{int(paper_metrics['trade_count'])}")
+        st.line_chart(paper_equity[["Equity"]], height=280)
+        st.subheader("Simulated trade journal")
+        st.dataframe(paper_trades, use_container_width=True, hide_index=True)
+        st.download_button("Download paper-trading journal (CSV)", data=paper_trades.to_csv(index=False).encode("utf-8"), file_name=f"paper_trades_{symbol.lower()}.csv", mime="text/csv")
+        st.download_button("Download paper equity curve (CSV)", data=paper_equity.to_csv().encode("utf-8"), file_name=f"paper_equity_{symbol.lower()}.csv", mime="text/csv")
+        st.caption("Historical simulation is not a live forward-looking paper account. Execution is approximated from daily closes.")
 
 with income_tab:
     st.subheader("Explore hypothetical passive-income scenarios")
