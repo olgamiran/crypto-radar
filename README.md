@@ -45,6 +45,15 @@ streamlit run app.py
 
 Streamlit will print a local URL, usually `http://localhost:8501`.
 
+### Run with Docker
+
+```bash
+docker build -t crypto-radar .
+docker run --rm -p 8501:8501 crypto-radar
+```
+
+Then open `http://localhost:8501`. The container runs as a non-root user and includes a basic health check.
+
 ## Run tests
 
 ```bash
@@ -94,8 +103,12 @@ crypto-radar/
 │   ├── test_portfolio.py
 │   └── test_yield_research.py
 ├── .github/workflows/tests.yml
+├── Dockerfile
+├── .dockerignore
 ├── requirements.txt
 ├── pytest.ini
+├── .gitignore
+├── CHANGELOG.md
 └── LICENSE
 ```
 
@@ -109,6 +122,7 @@ crypto-radar/
 - [ ] Add historical yield inputs with a source and timestamp for every rate
 - [ ] Add walk-forward testing and train/test splits
 - [ ] Add a persistent database for opt-in local portfolio history
+- [x] Add Docker packaging for reproducible local runs
 - [ ] Publish a demo with Streamlit Community Cloud
 
 ## Risks and learning resources
