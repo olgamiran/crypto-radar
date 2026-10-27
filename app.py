@@ -13,6 +13,12 @@ st.set_page_config(page_title="Crypto Radar", page_icon="📡", layout="wide")
 st.title("📡 Crypto Radar")
 st.caption("Market research, strategy backtesting, and hypothetical crypto-income scenarios. Educational use only; not investment advice.")
 
+
+@st.cache_data(ttl=900, show_spinner=False)
+def load_market_prices(symbol: str, period: str):
+    """Cache market data briefly so UI interactions do not repeatedly call the provider."""
+    return fetch_prices(symbol, period)
+
 with st.sidebar:
     st.header("Market settings")
     label = st.selectbox("Asset", list(SYMBOLS.keys()))
@@ -27,7 +33,7 @@ with st.sidebar:
 market_tab, income_tab, portfolio_tab, yield_tab = st.tabs(["📊 Market & backtest", "🧪 Crypto Income Lab", "💼 Virtual Portfolio", "🔎 Yield Research"])
 
 with market_tab:
-    prices, source_label = fetch_prices(symbol, period)
+    prices, source_label = load_market_prices(symbol, period)
     st.info(f"Data source: {source_label}. Verify data independently before making decisions.")
     if fast_window >= slow_window:
         st.warning("Fast SMA must be smaller than Slow SMA. Adjust the sliders to run the backtest.")
