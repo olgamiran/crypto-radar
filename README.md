@@ -9,7 +9,10 @@ A beginner-friendly crypto market dashboard, backtesting lab, and **virtual cryp
 - Daily price charts for BTC, ETH, SOL, XRP, and DOGE
 - Public historical price data through Yahoo Finance when available
 - Clearly labeled deterministic demo data when the live data source is unavailable
-- SMA crossover backtest with adjustable windows and estimated fees
+- SMA crossover backtest with adjustable windows, fees, and estimated slippage
+- Fair strategy-versus-buy-and-hold comparison after the moving-average warm-up period
+- Drawdown for strategy and benchmark, comparison dates, volatility, Sharpe ratio, CAGR, and trade count
+- Signal-driven historical paper trading with virtual cash, simulated trade journal, equity curve, and CSV export
 - Strategy-vs-buy-and-hold equity curves
 - Return, CAGR, volatility, Sharpe ratio, maximum drawdown, and trade-count metrics
 - Downloadable CSV of backtest output
@@ -17,8 +20,9 @@ A beginner-friendly crypto market dashboard, backtesting lab, and **virtual cryp
 - **Price stress test:** compare illustrative -50%, -20%, 0%, and +20% price-change scenarios
 - **Virtual Portfolio:** record simulated buys, sells, reward credits, and fees; mark positions to manually entered prices; review cash, holdings, equity, and profit/loss
 - CSV export of the virtual transaction ledger
+- Portable JSON backup and restore for the virtual portfolio
 - **Yield Research:** compare buy-and-hold, native staking, centralized lending, DeFi lending, stablecoin yield, and liquidity provision with liquidity notes, qualitative risks, and due-diligence questions; no stale or invented APY claims
-- Automated tests for the backtest, income calculator, portfolio accounting, and yield research catalogue
+- Automated tests for backtesting, paper trading, income scenarios, portfolio accounting, and yield research
 - GitHub Actions workflow configured to run tests on pushes and pull requests
 
 ## Quick start
@@ -81,9 +85,26 @@ The price paths are stress-test examples, not predictions or recommended allocat
 
 ## Backtest assumptions
 
-The example strategy holds the asset when the fast simple moving average (SMA) is above the slow SMA, otherwise it stays in cash. Signals are shifted by one candle so the strategy does not use the same day's closing price to trade at that close. A configurable fee is applied when the position changes.
+The example strategy holds the asset when the fast simple moving average (SMA) is above the slow SMA, otherwise it stays in cash. Signals are shifted by one candle so the strategy does not use the same day's closing price to trade at that close. A configurable fee and estimated slippage are applied when the position changes. Strategy and benchmark use the same comparison window after the slow moving average becomes available; comparison dates and candle count are shown.
 
-This is an educational daily-close model, not a production trading engine. It does not model spread, slippage, taxes, exchange outages, funding, liquidity, or order execution. Parameter tuning can overfit historical data.
+This is an educational daily-close model, not a production trading engine. It uses a flat slippage estimate rather than a live bid/ask spread; taxes, exchange outages, funding, liquidity constraints, and actual order execution are not modeled. Parameter tuning can overfit historical data.
+
+## Paper Trading
+
+The Paper Trading tab replays the selected SMA signal over historical candles using virtual cash and records simulated buys/sells, equity, drawdown, fees, and estimated slippage. It is a historical simulation, not a forward-running live paper account, and it never submits exchange orders.
+
+## Portfolio backups
+
+Download the virtual portfolio as JSON before ending a session, then upload that file later to restore the ledger. CSV exports are also available. The hosted app deliberately does not store every visitor's portfolio in a shared server database.
+
+## Publish on Streamlit Community Cloud
+
+1. Sign in to [Streamlit Community Cloud](https://share.streamlit.io/) with GitHub.
+2. Choose **Create app**, select repository `olgamiran/crypto-radar`, branch `main`, and main file `app.py`.
+3. Deploy and wait for the build to finish; Streamlit will provide the app URL.
+4. Check the Market & backtest and Paper Trading tabs after deployment.
+
+Deployment must be initiated by the repository owner from their account; it has not been published by this commit. Hosted filesystem storage may be ephemeral, so use portfolio backups. Do not commit API keys or secrets.
 
 ## Project structure
 
@@ -121,7 +142,8 @@ crypto-radar/
 - [ ] Add explicit scenario comparison templates for staking, lending, stablecoins, and holding
 - [ ] Add historical yield inputs with a source and timestamp for every rate
 - [ ] Add walk-forward testing and train/test splits
-- [ ] Add a persistent database for opt-in local portfolio history
+- [x] Add portable JSON backup and restore for virtual portfolio history
+- [ ] Add private durable storage for deployed multi-user use (requires authentication and per-user storage)
 - [x] Add Docker packaging for reproducible local runs
 - [ ] Publish a demo with Streamlit Community Cloud
 
