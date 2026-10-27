@@ -65,3 +65,11 @@ def test_fee_only_transaction_reduces_cash():
 def test_rejects_negative_starting_cash():
     with pytest.raises(ValueError):
         build_portfolio_snapshot(-1, [])
+
+
+def test_rejects_non_finite_fee():
+    with pytest.raises(ValueError, match="finite and non-negative"):
+        build_portfolio_snapshot(
+            100,
+            [{"type": "FEE", "asset": "", "quantity": 0, "price_usd": 0, "fee_usd": float("nan")}],
+        )
