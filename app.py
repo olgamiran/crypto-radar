@@ -7,6 +7,7 @@ from crypto_radar.backtest import run_backtest
 from crypto_radar.data import SYMBOLS, fetch_prices
 from crypto_radar.income import build_scenarios, calculate_income_scenario
 from crypto_radar.portfolio import build_portfolio_snapshot
+from crypto_radar.yield_research import get_categories, get_research_methods
 
 st.set_page_config(page_title="Crypto Radar", page_icon="📡", layout="wide")
 st.title("📡 Crypto Radar")
@@ -23,7 +24,7 @@ with st.sidebar:
     slow_window = st.slider("Slow SMA (days)", min_value=3, max_value=250, value=50)
     fee_pct = st.number_input("Fee per position change (%)", min_value=0.0, max_value=5.0, value=0.1, step=0.05)
 
-market_tab, income_tab, portfolio_tab = st.tabs(["📊 Market & backtest", "🧪 Crypto Income Lab", "💼 Virtual Portfolio"])
+market_tab, income_tab, portfolio_tab, yield_tab = st.tabs(["📊 Market & backtest", "🧪 Crypto Income Lab", "💼 Virtual Portfolio", "🔎 Yield Research"])
 
 with market_tab:
     prices, source_label = fetch_prices(symbol, period)
@@ -235,6 +236,52 @@ with portfolio_tab:
     except ValueError as error:
         st.error(f"Portfolio cannot be calculated: {error}")
         st.info("Reset the virtual portfolio or review the entries to restore a valid ledger.")
+
+
+with yield_tab:
+    st.subheader("Crypto Yield Research")
+    st.write("Compare common ways people seek crypto-related returns. This is a general risk-research catalogue, not a list of live offers or a recommendation.")
+    st.warning("No live APY values are shown. Advertised rates can change quickly and do not guarantee a positive total return.")
+
+    category = st.selectbox("Filter by mechanism", get_categories(), key="yield_category_filter")
+    methods = get_research_methods(category)
+    summary = pd.DataFrame([
+        {
+            "Method": item["name"],
+            "Category": item["category"],
+            "Potential reward source": item["reward_source"],
+            "Liquidity considerations": item["liquidity"],
+            "General risk level": item["risk_level"],
+        }
+        for item in methods
+    ])
+    st.dataframe(summary, use_container_width=True, hide_index=True)
+
+    if methods:
+        selected_id = st.selectbox(
+            "Explore risks and due-diligence questions",
+            options=[item["id"] for item in methods],
+            format_func=lambda method_id: next(item["name"] for item in methods if item["id"] == method_id),
+            key="yield_method_detail",
+        )
+        selected = next(item for item in methods if item["id"] == selected_id)
+        st.markdown(f"### {selected['name']}")
+        st.markdown(f"**How returns may be generated:** {selected['reward_source']}")
+        st.markdown(f"**Liquidity:** {selected['liquidity']}")
+        st.markdown(f"**General risk level:** {selected['risk_level']}")
+        st.markdown(f"**Key risks:** {selected['key_risks']}")
+        st.markdown(f"**Questions to verify:** {selected['what_to_verify']}")
+
+    with st.expander("Due-diligence checklist before considering any real product"):
+        st.markdown("""
+        - Identify exactly where the return comes from; do not rely on a headline APY.
+        - Read withdrawal, lock-up, redemption, and fee terms.
+        - Research custody, counterparty, smart-contract, oracle, and governance risks as applicable.
+        - Check whether incentives are temporary and whether the underlying asset can lose value.
+        - Consider what happens during a market crash, a stablecoin depeg, a platform outage, or a hack.
+        - Confirm the provider's legal entity and the applicable regulatory protections in your jurisdiction.
+        - Never treat this educational catalogue as a product endorsement or guaranteed-return list.
+        """)
 
 st.divider()
 st.caption("Research tool only — no real funds, wallet connection, staking, lending, or trading. Not financial advice.")
