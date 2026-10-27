@@ -28,8 +28,10 @@ with st.sidebar:
     period = st.selectbox("History", ["1mo", "3mo", "6mo", "1y", "2y", "5y"], index=3)
     st.divider()
     st.header("Backtest settings")
-    fast_window = st.slider("Fast SMA (days)", min_value=2, max_value=100, value=20)
-    slow_window = st.slider("Slow SMA (days)", min_value=3, max_value=250, value=50)
+    period_days = {"1mo": 30, "3mo": 90, "6mo": 180, "1y": 365, "2y": 730, "5y": 1825}[period]
+    slow_max = min(250, period_days)
+    fast_window = st.slider("Fast SMA (days)", min_value=2, max_value=min(100, slow_max - 1), value=min(20, slow_max - 1))
+    slow_window = st.slider("Slow SMA (days)", min_value=3, max_value=slow_max, value=min(50, slow_max))
     fee_pct = st.number_input("Fee per position change (%)", min_value=0.0, max_value=5.0, value=0.1, step=0.05)
     slippage_pct = st.number_input("Estimated slippage per change (%)", min_value=0.0, max_value=5.0, value=0.05, step=0.05)
 
