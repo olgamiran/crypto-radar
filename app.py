@@ -110,6 +110,7 @@ with income_tab:
 with portfolio_tab:
     st.subheader("Virtual Portfolio")
     st.write("Track simulated buys, sells, reward credits, and fees. This ledger lives in the current app session; it does not connect to an exchange or wallet.")
+    st.caption("All asset prices in this tab are manually entered hypothetical prices, not live market quotes.")
 
     if "portfolio_transactions" not in st.session_state:
         st.session_state["portfolio_transactions"] = []
@@ -120,7 +121,6 @@ with portfolio_tab:
         "Starting virtual cash (USD)",
         min_value=0.0,
         max_value=1_000_000_000.0,
-        value=float(st.session_state["portfolio_starting_cash"]),
         step=500.0,
         disabled=bool(st.session_state["portfolio_transactions"]),
         key="portfolio_starting_cash",
@@ -217,10 +217,6 @@ with portfolio_tab:
 
         if transactions and st.button("Reset virtual portfolio", type="secondary"):
             st.session_state["portfolio_transactions"] = []
-            st.session_state["portfolio_starting_cash"] = 10000.0
-            for key in list(st.session_state.keys()):
-                if key.startswith("portfolio_mark_"):
-                    del st.session_state[key]
             st.rerun()
 
         with st.expander("Accounting rules and limitations"):
