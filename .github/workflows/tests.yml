@@ -24,3 +24,5 @@ jobs:
         run: python -m compileall -q app.py crypto_radar tests
       - name: Run tests
         run: python -m pytest -q
+      - name: Build Docker image
+        run: docker build --tag crypto-radar:test .
