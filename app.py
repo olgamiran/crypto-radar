@@ -159,6 +159,22 @@ with portfolio_tab:
         help="Locked after the first ledger entry so historical accounting stays consistent.",
     )
     transactions = st.session_state["portfolio_transactions"]
+    st.caption("Keep your ledger between sessions with a private JSON backup. The hosted demo does not store user ledgers in a shared server database.")
+    backup = json.dumps({"starting_cash": starting_cash, "transactions": transactions}, indent=2)
+    st.download_button("Download portfolio backup (JSON)", data=backup, file_name="crypto_radar_portfolio_backup.json", mime="application/json")
+    uploaded_backup = st.file_uploader("Restore portfolio backup (JSON)", type=["json"], key="portfolio_backup_upload")
+    if uploaded_backup is not None and st.button("Restore uploaded backup"):
+        try:
+            restored = json.load(uploaded_backup)
+            restored_cash = float(restored["starting_cash"])
+            restored_transactions = restored["transactions"]
+            build_portfolio_snapshot(restored_cash, restored_transactions)
+            st.session_state["portfolio_transactions"] = restored_transactions
+            st.session_state["portfolio_starting_cash"] = restored_cash
+            st.success("Backup validated and restored for this session.")
+            st.rerun()
+        except (ValueError, TypeError, KeyError, json.JSONDecodeError) as error:
+            st.error(f"Could not restore backup: {error}")
 
     try:
         base_snapshot = build_portfolio_snapshot(starting_cash, transactions)
