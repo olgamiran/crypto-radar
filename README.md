@@ -17,7 +17,8 @@ A beginner-friendly crypto market dashboard, backtesting lab, and **virtual cryp
 - **Price stress test:** compare illustrative -50%, -20%, 0%, and +20% price-change scenarios
 - **Virtual Portfolio:** record simulated buys, sells, reward credits, and fees; mark positions to manually entered prices; review cash, holdings, equity, and profit/loss
 - CSV export of the virtual transaction ledger
-- Automated tests for the backtest, income calculator, and portfolio accounting
+- **Yield Research:** compare buy-and-hold, native staking, centralized lending, DeFi lending, stablecoin yield, and liquidity provision with liquidity notes, qualitative risks, and due-diligence questions; no stale or invented APY claims
+- Automated tests for the backtest, income calculator, portfolio accounting, and yield research catalogue
 - GitHub Actions workflow configured to run tests on pushes and pull requests
 
 ## Quick start
@@ -85,11 +86,13 @@ crypto-radar/
 │   ├── data.py
 │   ├── backtest.py
 │   ├── income.py
-│   └── portfolio.py
+│   ├── portfolio.py
+│   └── yield_research.py
 ├── tests/
 │   ├── test_backtest.py
 │   ├── test_income.py
-│   └── test_portfolio.py
+│   ├── test_portfolio.py
+│   └── test_yield_research.py
 ├── .github/workflows/tests.yml
 ├── requirements.txt
 ├── pytest.ini
@@ -101,7 +104,8 @@ crypto-radar/
 - [x] Add a virtual crypto-income scenario calculator
 - [x] Add illustrative price stress scenarios
 - [x] Add a virtual portfolio ledger with accounting validation
-- [ ] Add explicit comparison templates for staking, lending, stablecoins, and holding
+- [x] Add an educational yield-mechanism catalogue with risk notes
+- [ ] Add explicit scenario comparison templates for staking, lending, stablecoins, and holding
 - [ ] Add historical yield inputs with a source and timestamp for every rate
 - [ ] Add walk-forward testing and train/test splits
 - [ ] Add a persistent database for opt-in local portfolio history
