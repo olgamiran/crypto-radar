@@ -11,20 +11,20 @@ st.set_page_config(page_title="Crypto Radar", page_icon="📡", layout="wide")
 st.title("📡 Crypto Radar")
 st.caption("Market research, strategy backtesting, and hypothetical crypto-income scenarios. Educational use only; not investment advice.")
 
+with st.sidebar:
+    st.header("Market settings")
+    label = st.selectbox("Asset", list(SYMBOLS.keys()))
+    symbol = SYMBOLS[label]
+    period = st.selectbox("History", ["1mo", "3mo", "6mo", "1y", "2y", "5y"], index=3)
+    st.divider()
+    st.header("Backtest settings")
+    fast_window = st.slider("Fast SMA (days)", min_value=2, max_value=100, value=20)
+    slow_window = st.slider("Slow SMA (days)", min_value=3, max_value=250, value=50)
+    fee_pct = st.number_input("Fee per position change (%)", min_value=0.0, max_value=5.0, value=0.1, step=0.05)
+
 market_tab, income_tab = st.tabs(["📊 Market & backtest", "🧪 Crypto Income Lab"])
 
 with market_tab:
-    with st.sidebar:
-        st.header("Market settings")
-        label = st.selectbox("Asset", list(SYMBOLS.keys()))
-        symbol = SYMBOLS[label]
-        period = st.selectbox("History", ["1mo", "3mo", "6mo", "1y", "2y", "5y"], index=3)
-        st.divider()
-        st.header("Backtest settings")
-        fast_window = st.slider("Fast SMA (days)", min_value=2, max_value=100, value=20)
-        slow_window = st.slider("Slow SMA (days)", min_value=3, max_value=250, value=50)
-        fee_pct = st.number_input("Fee per position change (%)", min_value=0.0, max_value=5.0, value=0.1, step=0.05)
-
     prices, source_label = fetch_prices(symbol, period)
     st.info(f"Data source: {source_label}. Verify data independently before making decisions.")
     if fast_window >= slow_window:
