@@ -1,6 +1,6 @@
 # Crypto Radar 📡
 
-A beginner-friendly crypto market dashboard, backtesting lab, and **virtual crypto-income scenario calculator** built with Python, Pandas, and Streamlit.
+A beginner-friendly crypto market dashboard, backtesting lab, and **virtual crypto-income research platform** built with Python, Pandas, and Streamlit.
 
 > **Safety notice:** Educational software only. It does not provide financial advice, connect to wallets or exchanges, place trades, stake assets, or lend funds. Scenarios are hypothetical; rewards are not guaranteed and losses are possible.
 
@@ -15,7 +15,10 @@ A beginner-friendly crypto market dashboard, backtesting lab, and **virtual cryp
 - Downloadable CSV of backtest output
 - **Crypto Income Lab:** estimate hypothetical rewards using an assumed APR, duration, and one-off fee
 - **Price stress test:** compare illustrative -50%, -20%, 0%, and +20% price-change scenarios
-- Automated tests for the backtest and income calculator
+- **Virtual Portfolio:** record simulated buys, sells, reward credits, and fees; mark positions to manually entered prices; review cash, holdings, equity, and profit/loss
+- CSV export of the virtual transaction ledger
+- Automated tests for the backtest, income calculator, and portfolio accounting
+- GitHub Actions workflow configured to run tests on pushes and pull requests
 
 ## Quick start
 
@@ -44,16 +47,29 @@ Streamlit will print a local URL, usually `http://localhost:8501`.
 ## Run tests
 
 ```bash
-pytest -q
+python -m pytest -q
 ```
+
+## Virtual Portfolio accounting
+
+The virtual portfolio starts with configurable simulated cash. A starting balance becomes locked after the first transaction to keep the ledger internally consistent.
+
+- **BUY:** cash decreases by quantity × transaction price plus fees.
+- **SELL:** cash increases by quantity × transaction price minus fees; selling more units than held is rejected.
+- **REWARD:** adds units to holdings. The reward is not cash; its value depends on the entered price.
+- **FEE:** records a standalone cash expense.
+- Portfolio equity = virtual cash + the market value of held assets.
+- Profit/loss = current portfolio equity minus starting virtual cash.
+
+Prices are entered manually and are not live quotes. Transactions are stored in Streamlit session state, so the ledger may reset when the app session ends or the app restarts. CSV export is available for keeping a local copy. This is a simplified educational ledger, not tax accounting or a broker statement.
 
 ## Crypto Income Lab assumptions
 
-The calculator models a constant user-entered nominal APR compounded monthly. It applies a hypothetical asset-price change to the starting balance plus modeled rewards and subtracts a one-off fee based on the initial balance. It is deliberately simple and does **not** model taxes, changing rates, lock-up periods, liquidity constraints, stablecoin depegs, slashing, hacks, or provider/protocol failure. A positive yield can still result in an overall loss if the asset price falls.
+The calculator models a constant user-entered nominal APR compounded monthly. It applies a hypothetical asset-price change to the starting balance plus modeled rewards and subtracts a one-off fee based on the initial balance. It does **not** model taxes, changing rates, lock-up periods, liquidity constraints, stablecoin depegs, slashing, hacks, or provider/protocol failure. A positive yield can still result in an overall loss if the asset price falls.
 
 The price paths are stress-test examples, not predictions or recommended allocations. Do not interpret the APR field as a live or verified offer.
 
-## Strategy logic
+## Backtest assumptions
 
 The example strategy holds the asset when the fast simple moving average (SMA) is above the slow SMA, otherwise it stays in cash. Signals are shifted by one candle so the strategy does not use the same day's closing price to trade at that close. A configurable fee is applied when the position changes.
 
@@ -68,24 +84,27 @@ crypto-radar/
 │   ├── __init__.py
 │   ├── data.py
 │   ├── backtest.py
-│   └── income.py
+│   ├── income.py
+│   └── portfolio.py
 ├── tests/
 │   ├── test_backtest.py
-│   └── test_income.py
+│   ├── test_income.py
+│   └── test_portfolio.py
+├── .github/workflows/tests.yml
 ├── requirements.txt
 ├── pytest.ini
-└── .gitignore
+└── LICENSE
 ```
 
 ## Roadmap
 
 - [x] Add a virtual crypto-income scenario calculator
 - [x] Add illustrative price stress scenarios
-- [ ] Add a virtual portfolio ledger (no wallet connection)
-- [ ] Compare staking, lending, and holding with explicit risk notes
-- [ ] Add historical yield inputs and clearly label data freshness/source
+- [x] Add a virtual portfolio ledger with accounting validation
+- [ ] Add explicit comparison templates for staking, lending, stablecoins, and holding
+- [ ] Add historical yield inputs with a source and timestamp for every rate
 - [ ] Add walk-forward testing and train/test splits
-- [ ] Add GitHub Actions for automated tests
+- [ ] Add a persistent database for opt-in local portfolio history
 - [ ] Publish a demo with Streamlit Community Cloud
 
 ## Risks and learning resources
@@ -94,4 +113,4 @@ Crypto staking, lending, and yield products can involve market, custody, technic
 
 ## License
 
-No license has been specified yet. Please add a license before allowing others to reuse or redistribute this project.
+This project is released under the MIT License. See [LICENSE](LICENSE).
