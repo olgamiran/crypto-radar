@@ -31,3 +31,20 @@ def test_paper_trading_handles_empty_cash_without_trades():
     equity, trades, metrics = simulate_sma_paper_trades(sample_prices(days=80), 5, 15, 0)
     assert metrics["final_equity"] == 0
     assert trades.empty
+
+
+
+def test_paper_trading_compares_buy_and_hold_on_same_period():
+    prices = sample_prices(days=120)
+    equity, _, metrics = simulate_sma_paper_trades(
+        prices, fast_window=5, slow_window=15, starting_cash=2000,
+        fee_pct=0.1, slippage_pct=0.05,
+    )
+    assert "Buy & Hold Equity" in equity.columns
+    assert "Buy & Hold Drawdown" in equity.columns
+    assert equity["Buy & Hold Equity"].iloc[0] == pytest.approx(2000)
+    assert metrics["buy_hold_final_equity"] == pytest.approx(equity["Buy & Hold Equity"].iloc[-1])
+    assert metrics["excess_return_pct"] == pytest.approx(
+        metrics["return_pct"] - metrics["buy_hold_return_pct"]
+    )
+    assert metrics["buy_hold_max_drawdown"] <= 0
