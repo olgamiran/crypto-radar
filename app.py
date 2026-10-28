@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from crypto_radar.backtest import run_backtest
+from crypto_radar.backtest import compare_sma_parameter_sets, run_backtest
 from crypto_radar.data import SYMBOLS, fetch_prices
 from crypto_radar.income import build_scenarios, calculate_income_scenario
 from crypto_radar.portfolio import build_portfolio_snapshot
@@ -80,6 +80,34 @@ with market_tab:
             - Fees are a simplified estimate; spread, slippage, taxes, funding, and real execution are not modeled.
             - Historical performance does not predict future results. This app does not place trades or connect to exchange accounts.
             """)
+
+
+    st.divider()
+    st.subheader("🧪 SMA parameter lab — train vs. test")
+    st.write("Compare several moving-average settings on an earlier training period and a later holdout period. The test period is chronological and is not used to choose settings.")
+    if len(prices) >= 20:
+        max_slow_for_lab = max(5, int(len(prices) * 0.5))
+        candidate_configs = [(3, 5), (5, 10), (5, 15), (10, 30), (20, 50), (20, 100), (50, 150)]
+        lab_configs = [(fast, slow) for fast, slow in candidate_configs if fast < slow and slow <= max_slow_for_lab]
+        if not lab_configs:
+            lab_configs = [(2, 3)]
+        try:
+            comparison = compare_sma_parameter_sets(
+                prices, lab_configs, train_fraction=0.7,
+                fee_pct=fee_pct, slippage_pct=slippage_pct,
+            )
+            st.dataframe(comparison.round(2), use_container_width=True, hide_index=True)
+            st.download_button(
+                "Download SMA parameter comparison (CSV)",
+                data=comparison.to_csv(index=False).encode("utf-8"),
+                file_name=f"sma_parameter_lab_{symbol.lower()}.csv",
+                mime="text/csv",
+            )
+            st.caption("Sorted by test-period excess return versus Buy & Hold. This is a historical comparison, not a forecast; choosing the top row after looking at test results would introduce selection bias.")
+        except ValueError as error:
+            st.info(f"Parameter comparison is not available for this history: {error}")
+    else:
+        st.info("At least 20 valid daily price bars are needed for the parameter lab.")
 
 with paper_tab:
     st.subheader("Signal-driven Paper Trading")
