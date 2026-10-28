@@ -4,7 +4,7 @@ import pandas as pd
 import streamlit as st
 
 from crypto_radar.backtest import compare_sma_parameter_sets, run_backtest
-from crypto_radar.data import SYMBOLS, fetch_prices
+from crypto_radar.data import SYMBOLS, assess_price_data, fetch_prices
 from crypto_radar.income import build_scenarios, calculate_income_scenario
 from crypto_radar.portfolio import build_portfolio_snapshot
 from crypto_radar.paper_trading import simulate_sma_paper_trades
@@ -40,6 +40,25 @@ market_tab, paper_tab, income_tab, portfolio_tab, yield_tab = st.tabs(["📊 Mar
 with market_tab:
     prices, source_label = load_market_prices(symbol, period)
     st.info(f"Data source: {source_label}. Verify data independently before making decisions.")
+    data_quality = assess_price_data(prices)
+    with st.expander("🩺 Market data quality", expanded="DEMO DATA" in source_label or (data_quality["latest_age_days"] is not None and data_quality["latest_age_days"] > 3)):
+        q1, q2, q3, q4 = st.columns(4)
+        q1.metric("Daily bars", f"{data_quality['bars']:,}")
+        q2.metric("History starts", str(data_quality["start_date"] or "N/A"))
+        q3.metric("Latest candle", str(data_quality["end_date"] or "N/A"))
+        q4.metric("Latest age", f"{data_quality['latest_age_days']} day(s)" if data_quality["latest_age_days"] is not None else "N/A")
+        st.caption(
+            f"Missing calendar days across the series: {data_quality['missing_calendar_days']}. "
+            f"Largest gap: {data_quality['max_gap_days']} day(s). "
+            f"Duplicate timestamps: {data_quality['duplicate_timestamps']}. "
+            f"Invalid close rows: {data_quality['invalid_close_rows']}."
+        )
+        if "DEMO DATA" in source_label:
+            st.warning("These are generated demonstration prices, not actual market history. Do not use them to evaluate a real trading strategy.")
+        if data_quality["latest_age_days"] is not None and data_quality["latest_age_days"] > 3 and "DEMO DATA" not in source_label:
+            st.warning("The latest available candle is more than three days old. Results may not reflect current market conditions.")
+        if data_quality["missing_calendar_days"] > 3:
+            st.warning("The price history contains multiple missing calendar days; backtest results may be affected.")
     if fast_window >= slow_window:
         st.warning("Fast SMA must be smaller than Slow SMA. Adjust the sliders to run the backtest.")
     else:
