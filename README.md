@@ -9,6 +9,7 @@ A beginner-friendly crypto market dashboard, backtesting lab, and **virtual cryp
 - Daily price charts for BTC, ETH, SOL, XRP, and DOGE
 - Public historical price data through Yahoo Finance when available
 - Clearly labeled deterministic demo data when the live data source is unavailable
+- Market data quality panel showing history coverage, latest candle age, missing calendar days, duplicate timestamps, invalid close values, and warnings for stale/demo data
 - SMA crossover backtest with adjustable windows, fees, and estimated slippage
 - Fair strategy-versus-buy-and-hold comparison after the moving-average warm-up period
 - SMA parameter lab comparing fixed settings on chronological training and holdout periods, including holdout return, excess return vs. Buy & Hold, drawdown, and trade count
