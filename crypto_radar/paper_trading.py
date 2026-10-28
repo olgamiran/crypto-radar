@@ -43,15 +43,25 @@ def simulate_sma_paper_trades(prices: pd.DataFrame, fast_window: int = 20,
             cash += gross - fee
             ledger.append({"date": str(date), "action": "SELL", "price": px, "quantity": units, "fee": fee})
             units, action = 0.0, "SELL"
+        buy_hold_equity = starting_cash * price / float(data["Close"].iloc[0])
         rows.append({"date": date, "Close": price, "Signal": signal, "Action": action,
-                     "Cash": cash, "Units": units, "Equity": cash + units * price})
+                     "Cash": cash, "Units": units, "Equity": cash + units * price,
+                     "Buy & Hold Equity": buy_hold_equity})
     equity = pd.DataFrame(rows).set_index("date")
     equity["Drawdown"] = equity["Equity"] / equity["Equity"].cummax() - 1
+    equity["Buy & Hold Drawdown"] = equity["Buy & Hold Equity"] / equity["Buy & Hold Equity"].cummax() - 1
     trades = pd.DataFrame(ledger, columns=["date", "action", "price", "quantity", "fee"])
     final = float(equity["Equity"].iloc[-1])
+    buy_hold_final = float(equity["Buy & Hold Equity"].iloc[-1])
+    strategy_return = (final / starting_cash - 1) * 100 if starting_cash else 0.0
+    buy_hold_return = (buy_hold_final / starting_cash - 1) * 100 if starting_cash else 0.0
     metrics = {"starting_cash": starting_cash, "final_equity": final,
+               "buy_hold_final_equity": buy_hold_final,
+               "buy_hold_return_pct": buy_hold_return,
+               "excess_return_pct": strategy_return - buy_hold_return,
+               "buy_hold_max_drawdown": float(equity["Buy & Hold Drawdown"].min()),
                "profit_loss": final - starting_cash,
-               "return_pct": (final / starting_cash - 1) * 100 if starting_cash else 0.0,
+               "return_pct": strategy_return,
                "max_drawdown": float(equity["Drawdown"].min()),
                "trade_count": float(len(trades)),
                "fees_paid": float(trades["fee"].sum()) if not trades.empty else 0.0}
