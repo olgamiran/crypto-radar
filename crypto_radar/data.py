@@ -42,3 +42,39 @@ def fetch_prices(symbol: str = "BTC-USD", period: str = "1y") -> tuple[pd.DataFr
         pass
     days = {"1mo": 30, "3mo": 90, "6mo": 180, "1y": 365, "2y": 730, "5y": 1825}.get(period, 365)
     return sample_prices(symbol, days=days), "DEMO DATA — live source unavailable"
+
+
+def assess_price_data(prices: pd.DataFrame) -> dict[str, object]:
+    """Return transparent quality diagnostics for a daily crypto price series."""
+    if not isinstance(prices, pd.DataFrame) or prices.empty:
+        return {
+            "bars": 0, "start_date": None, "end_date": None,
+            "invalid_close_rows": 0, "duplicate_timestamps": 0,
+            "missing_calendar_days": 0, "max_gap_days": 0, "latest_age_days": None,
+        }
+    idx = pd.DatetimeIndex(pd.to_datetime(prices.index, errors="coerce"))
+    valid_dates = ~idx.isna()
+    idx = idx[valid_dates]
+    if idx.tz is not None:
+        idx = idx.tz_convert("UTC").tz_localize(None)
+    close = pd.to_numeric(prices.loc[valid_dates, "Close"], errors="coerce") if "Close" in prices else pd.Series(dtype=float)
+    invalid_close = int((close.isna() | (close <= 0)).sum()) if len(close) else len(prices)
+    duplicate_count = int(idx.duplicated(keep="last").sum())
+    unique_dates = idx[~idx.duplicated(keep="last")].sort_values()
+    gaps = unique_dates.to_series().diff().dt.days.dropna()
+    missing_days = int((gaps - 1).clip(lower=0).sum()) if len(gaps) else 0
+    max_gap = int(gaps.max()) if len(gaps) else 0
+    latest = unique_dates[-1] if len(unique_dates) else None
+    today_utc = pd.Timestamp.now(tz="UTC").tz_localize(None).normalize()
+    age_days = max(0, int((today_utc - latest.normalize()).days)) if latest is not None else None
+    return {
+        "bars": int(len(prices)),
+        "start_date": str(unique_dates[0].date()) if len(unique_dates) else None,
+        "end_date": str(latest.date()) if latest is not None else None,
+        "invalid_close_rows": invalid_close,
+        "duplicate_timestamps": duplicate_count,
+        "missing_calendar_days": missing_days,
+        "max_gap_days": max_gap,
+        "latest_age_days": age_days,
+    }
+
