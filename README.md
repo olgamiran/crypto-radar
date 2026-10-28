@@ -154,3 +154,18 @@ Crypto staking, lending, and yield products can involve market, custody, technic
 ## License
 
 This project is released under the MIT License. See [LICENSE](LICENSE).
+
+## Deploy to Streamlit Community Cloud
+
+1. Push the project to a public GitHub repository.
+2. In [Streamlit Community Cloud](https://share.streamlit.io/), create a new app and select this repository, the `main` branch, and `app.py` as the entry point.
+3. Deploy the app. Later commits pushed to the selected branch normally trigger a redeploy; check the app's **Manage app** logs if startup fails.
+4. Open the public app URL and verify each tab after deployment.
+
+The repository includes `.streamlit/config.toml` with basic server defaults. Do not put API keys, passwords, wallet seed phrases, or other secrets into source files or commit them to GitHub.
+
+## Important persistence note
+
+Streamlit session state is temporary. The virtual portfolio is not a cloud database: a session can reset after a browser reconnect, app restart, or redeploy. Export the CSV ledger and download a JSON backup regularly if you want to keep your virtual records. A downloaded backup stays on your own device unless you choose to share it.
+
+Paper Trading replays historical daily candles; it is not a persistent live simulation and does not submit orders. Results depend on the selected date range, SMA windows, fees, and estimated slippage. Treat all outputs as educational experiments rather than forecasts or financial advice.
