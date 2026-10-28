@@ -44,3 +44,29 @@ def test_backtest_rejects_non_positive_prices():
     prices = pd.DataFrame({"Close": [0, -1, 2]}, index=pd.date_range("2025-01-01", periods=3))
     with pytest.raises(ValueError):
         run_backtest(prices)
+
+
+def test_parameter_comparison_uses_chronological_train_and_test_periods():
+    from crypto_radar.backtest import compare_sma_parameter_sets
+
+    prices = sample_prices(days=240)
+    table = compare_sma_parameter_sets(
+        prices, [(5, 15), (10, 30), (20, 50)], train_fraction=0.7,
+        fee_pct=0.1, slippage_pct=0.05,
+    )
+    assert len(table) == 3
+    assert {"Train return (%)", "Test return (%)", "Test Buy & Hold (%)",
+            "Test excess vs Buy & Hold (pp)", "Test max drawdown (%)",
+            "Test position changes", "Train bars", "Test bars"}.issubset(table.columns)
+    assert (table["Train bars"] > 0).all()
+    assert (table["Test bars"] > 0).all()
+    assert table["Test bars"].nunique() == 1
+    assert table.iloc[0]["Test excess vs Buy & Hold (pp)"] >= table.iloc[-1]["Test excess vs Buy & Hold (pp)"]
+
+
+def test_parameter_comparison_rejects_invalid_split():
+    from crypto_radar.backtest import compare_sma_parameter_sets
+
+    with pytest.raises(ValueError, match="Train fraction"):
+        compare_sma_parameter_sets(sample_prices(days=100), [(5, 15)], train_fraction=0.4)
+
