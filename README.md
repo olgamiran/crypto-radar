@@ -12,7 +12,7 @@ A beginner-friendly crypto market dashboard, backtesting lab, and **virtual cryp
 - SMA crossover backtest with adjustable windows, fees, and estimated slippage
 - Fair strategy-versus-buy-and-hold comparison after the moving-average warm-up period
 - Drawdown for strategy and benchmark, comparison dates, volatility, Sharpe ratio, CAGR, and trade count
-- Signal-driven historical paper trading with virtual cash, simulated trade journal, equity curve, and CSV export
+- Signal-driven historical paper trading with virtual cash, simulated trade journal, equity curve, same-period buy-and-hold benchmark, and CSV export
 - Strategy-vs-buy-and-hold equity curves
 - Return, CAGR, volatility, Sharpe ratio, maximum drawdown, and trade-count metrics
 - Downloadable CSV of backtest output
