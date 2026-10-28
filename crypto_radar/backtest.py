@@ -75,3 +75,63 @@ def run_backtest(
         "comparison_bars": float(len(result)),
     }
     return result, metrics
+
+
+def compare_sma_parameter_sets(
+    prices: pd.DataFrame,
+    configurations: list[tuple[int, int]],
+    train_fraction: float = 0.7,
+    fee_pct: float = 0.1,
+    slippage_pct: float = 0.05,
+) -> pd.DataFrame:
+    """Compare fixed SMA configurations on chronological train/test periods.
+
+    The split date is based on the cleaned raw price history, not each
+    configuration's indicator warm-up. Test returns are compounded only from
+    bars on/after the split date; the signal on those bars may use earlier
+    prices, as it would in a real walk-forward evaluation.
+    """
+    if not math.isfinite(float(train_fraction)) or not 0.5 <= train_fraction <= 0.9:
+        raise ValueError("Train fraction must be between 0.5 and 0.9.")
+    if "Close" not in prices:
+        raise ValueError("Prices must contain a Close column.")
+    clean = prices[["Close"]].copy()
+    clean["Close"] = pd.to_numeric(clean["Close"], errors="coerce")
+    clean = clean.loc[clean["Close"].notna() & (clean["Close"] > 0)].sort_index()
+    clean = clean.loc[~clean.index.duplicated(keep="last")]
+    if len(clean) < 20:
+        raise ValueError("At least 20 valid price bars are required for a parameter comparison.")
+    if not configurations:
+        raise ValueError("Provide at least one SMA configuration.")
+    split_pos = min(max(int(len(clean) * train_fraction), 1), len(clean) - 1)
+    split_date = clean.index[split_pos]
+    rows = []
+    for fast_window, slow_window in configurations:
+        result, _ = run_backtest(clean, fast_window, slow_window, fee_pct, slippage_pct)
+        train = result.loc[result.index < split_date]
+        test = result.loc[result.index >= split_date]
+        if len(train) < 2 or len(test) < 2:
+            continue
+        train_return = float((1 + train["Strategy Return"]).prod() - 1)
+        test_return = float((1 + test["Strategy Return"]).prod() - 1)
+        test_buy_hold = float((1 + test["Buy & Hold Return"]).prod() - 1)
+        test_equity = (1 + test["Strategy Return"]).cumprod()
+        test_drawdown = float((test_equity / test_equity.cummax() - 1).min())
+        rows.append({
+            "Fast SMA": fast_window,
+            "Slow SMA": slow_window,
+            "Train return (%)": train_return * 100,
+            "Test return (%)": test_return * 100,
+            "Test Buy & Hold (%)": test_buy_hold * 100,
+            "Test excess vs Buy & Hold (pp)": (test_return - test_buy_hold) * 100,
+            "Test max drawdown (%)": test_drawdown * 100,
+            "Test position changes": int((test["Trades"] > 0).sum()),
+            "Train bars": int(len(train)),
+            "Test bars": int(len(test)),
+        })
+    if not rows:
+        raise ValueError("Not enough data remains in both periods for these SMA settings.")
+    return pd.DataFrame(rows).sort_values(
+        ["Test excess vs Buy & Hold (pp)", "Test return (%)"], ascending=False
+    ).reset_index(drop=True)
+
