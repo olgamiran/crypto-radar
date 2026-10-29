@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from crypto_radar.backtest import run_backtest
+from crypto_radar.backtest import compare_execution_cost_scenarios, run_backtest
 from crypto_radar.data import sample_prices
 
 
@@ -70,3 +70,19 @@ def test_parameter_comparison_rejects_invalid_split():
     with pytest.raises(ValueError, match="Train fraction"):
         compare_sma_parameter_sets(sample_prices(days=100), [(5, 15)], train_fraction=0.4)
 
+
+
+def test_execution_cost_scenarios_use_same_history_and_increasing_costs():
+    prices = sample_prices(days=180)
+    table = compare_execution_cost_scenarios(
+        prices, fast_window=5, slow_window=15, fee_pct=0.1, slippage_pct=0.05
+    )
+    assert table["Scenario"].tolist() == [
+        "Base costs (1×)", "Double costs (2×)", "High costs (4×)"
+    ]
+    assert table["Comparison bars"].nunique() == 1
+    assert table["Position changes"].nunique() == 1
+    assert table["Fee per change (%)"].tolist() == [0.1, 0.2, 0.4]
+    assert table["Slippage per change (%)"].tolist() == [0.05, 0.1, 0.2]
+    assert table["Strategy return (%)"].iloc[0] >= table["Strategy return (%)"].iloc[1]
+    assert table["Strategy return (%)"].iloc[1] >= table["Strategy return (%)"].iloc[2]
