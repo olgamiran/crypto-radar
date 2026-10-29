@@ -135,3 +135,36 @@ def compare_sma_parameter_sets(
         ["Test excess vs Buy & Hold (pp)", "Test return (%)"], ascending=False
     ).reset_index(drop=True)
 
+def compare_execution_cost_scenarios(
+    prices: pd.DataFrame,
+    fast_window: int,
+    slow_window: int,
+    fee_pct: float = 0.1,
+    slippage_pct: float = 0.05,
+) -> pd.DataFrame:
+    """Stress-test a fixed SMA strategy under increasing execution costs.
+
+    Uses the same signals and history for every scenario; only fees and
+    slippage change. Cost multipliers are illustrative, not broker estimates.
+    """
+    scenarios = [("Base costs (1×)", 1.0), ("Double costs (2×)", 2.0), ("High costs (4×)", 4.0)]
+    rows = []
+    for label, multiplier in scenarios:
+        result, metrics = run_backtest(
+            prices, fast_window, slow_window,
+            fee_pct=fee_pct * multiplier,
+            slippage_pct=slippage_pct * multiplier,
+        )
+        rows.append({
+            "Scenario": label,
+            "Fee per change (%)": fee_pct * multiplier,
+            "Slippage per change (%)": slippage_pct * multiplier,
+            "Strategy return (%)": metrics["strategy_return"] * 100,
+            "Buy & Hold return (%)": metrics["buy_hold_return"] * 100,
+            "Excess vs Buy & Hold (pp)": (metrics["strategy_return"] - metrics["buy_hold_return"]) * 100,
+            "Strategy max drawdown (%)": metrics["max_drawdown"] * 100,
+            "Position changes": int(metrics["trade_count"]),
+            "Estimated cumulative costs (% of initial equity)": metrics["total_trading_costs_pct_initial_equity"],
+            "Comparison bars": int(metrics["comparison_bars"]),
+        })
+    return pd.DataFrame(rows)
