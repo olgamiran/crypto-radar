@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from crypto_radar.backtest import compare_sma_parameter_sets, run_backtest
+from crypto_radar.backtest import compare_execution_cost_scenarios, compare_sma_parameter_sets, run_backtest
 from crypto_radar.data import SYMBOLS, assess_price_data, fetch_prices
 from crypto_radar.income import build_scenarios, calculate_income_scenario
 from crypto_radar.portfolio import build_portfolio_snapshot
@@ -99,6 +99,25 @@ with market_tab:
             - Fees are a simplified estimate; spread, slippage, taxes, funding, and real execution are not modeled.
             - Historical performance does not predict future results. This app does not place trades or connect to exchange accounts.
             """)
+
+        with st.expander("🧾 Execution-cost stress test", expanded=False):
+            st.write("Keep the same SMA signals and historical dates, then compare the result if fees and estimated slippage were 1×, 2×, or 4× the sidebar assumptions.")
+            try:
+                cost_stress = compare_execution_cost_scenarios(
+                    prices, fast_window, slow_window, fee_pct=fee_pct, slippage_pct=slippage_pct
+                )
+                st.dataframe(cost_stress.round(3), use_container_width=True, hide_index=True)
+                st.download_button(
+                    "Download execution-cost stress test (CSV)",
+                    data=cost_stress.to_csv(index=False).encode("utf-8"),
+                    file_name=f"execution_cost_stress_{symbol.lower()}.csv",
+                    mime="text/csv",
+                )
+                if cost_stress["Excess vs Buy & Hold (pp)"].iloc[-1] < 0:
+                    st.warning("Under the 4× cost assumption, the strategy underperformed Buy & Hold on this historical window.")
+                st.caption("Cost multipliers are illustrative, not live exchange quotes. Cumulative cost is the sum of modeled per-change charges, not a full accounting statement. Higher costs can materially change historical results; this is not a forecast.")
+            except ValueError as error:
+                st.info(f"Cost stress test is not available for this history: {error}")
 
 
     st.divider()
