@@ -11,6 +11,7 @@ A beginner-friendly crypto market dashboard, backtesting lab, and **virtual cryp
 - Clearly labeled deterministic demo data when the live data source is unavailable
 - Market data quality panel showing history coverage, latest candle age, missing calendar days, duplicate timestamps, invalid close values, and warnings for stale/demo data
 - SMA crossover backtest with adjustable windows, fees, and estimated slippage
+- Execution-cost stress test comparing 1×, 2×, and 4× cost assumptions on the same historical dates, with benchmark excess return, drawdown, trade count, and CSV export
 - Fair strategy-versus-buy-and-hold comparison after the moving-average warm-up period
 - SMA parameter lab comparing fixed settings on chronological training and holdout periods, including holdout return, excess return vs. Buy & Hold, drawdown, and trade count
 - Drawdown for strategy and benchmark, comparison dates, volatility, Sharpe ratio, CAGR, and trade count
@@ -89,6 +90,8 @@ The price paths are stress-test examples, not predictions or recommended allocat
 
 The example strategy holds the asset when the fast simple moving average (SMA) is above the slow SMA, otherwise it stays in cash. Signals are shifted by one candle so the strategy does not use the same day's closing price to trade at that close. A configurable fee and estimated slippage are applied when the position changes. Strategy and benchmark use the same comparison window after the slow moving average becomes available; comparison dates and candle count are shown.
 
+The execution-cost stress test repeats the same SMA signals and history with 1×, 2×, and 4× the selected fee and slippage assumptions. It helps show whether a strategy's historical result is fragile to trading costs. Multipliers are illustrative, not exchange-specific estimates; this does not model order-book depth, actual spread, taxes, or market impact.
+
 The SMA parameter lab uses a chronological 70% training / 30% holdout split and reports the later period separately. It is intended to reduce accidental tuning on the full history, but repeated inspection of holdout results can still introduce selection bias; a proper walk-forward test and more realistic execution modeling would be needed before drawing strong conclusions.
 
 This is an educational daily-close model, not a production trading engine. It uses a flat slippage estimate rather than a live bid/ask spread; taxes, exchange outages, funding, liquidity constraints, and actual order execution are not modeled. Parameter tuning can overfit historical data.
@@ -145,7 +148,9 @@ crypto-radar/
 - [x] Add an educational yield-mechanism catalogue with risk notes
 - [ ] Add explicit scenario comparison templates for staking, lending, stablecoins, and holding
 - [ ] Add historical yield inputs with a source and timestamp for every rate
-- [ ] Add walk-forward testing and train/test splits
+- [x] Add chronological train/test SMA comparison
+- [x] Add execution-cost stress testing
+- [ ] Add rolling walk-forward evaluation
 - [x] Add portable JSON backup and restore for virtual portfolio history
 - [ ] Add private durable storage for deployed multi-user use (requires authentication and per-user storage)
 - [x] Add Docker packaging for reproducible local runs
