@@ -168,3 +168,81 @@ def compare_execution_cost_scenarios(
             "Comparison bars": int(metrics["comparison_bars"]),
         })
     return pd.DataFrame(rows)
+
+
+def walk_forward_sma_evaluation(
+    prices: pd.DataFrame,
+    configurations: list[tuple[int, int]],
+    n_folds: int = 3,
+    fee_pct: float = 0.1,
+    slippage_pct: float = 0.05,
+) -> pd.DataFrame:
+    """Expanding-window SMA selection with strictly later, non-overlapping tests.
+
+    Each fold selects the highest net training return using only prices before
+    its test start. Indicators may use historical warm-up prices, but test
+    returns are measured only on the subsequent held-out candles.
+    """
+    if not isinstance(n_folds, int) or not 2 <= n_folds <= 6:
+        raise ValueError("Number of folds must be between 2 and 6.")
+    if "Close" not in prices:
+        raise ValueError("Prices must contain a Close column.")
+    clean = prices[["Close"]].copy()
+    clean["Close"] = pd.to_numeric(clean["Close"], errors="coerce")
+    clean = clean.loc[clean["Close"].notna() & (clean["Close"] > 0)].sort_index()
+    clean = clean.loc[~clean.index.duplicated(keep="last")]
+    if len(clean) < 120:
+        raise ValueError("At least 120 valid price bars are needed for walk-forward testing.")
+    if not configurations:
+        raise ValueError("Provide at least one SMA configuration.")
+    if len(set(configurations)) != len(configurations):
+        raise ValueError("SMA configurations must be unique.")
+    initial_train = max(90, len(clean) // 2)
+    remaining = len(clean) - initial_train
+    if remaining < n_folds * 10:
+        raise ValueError("At least 10 held-out candles per fold are required.")
+    for fast, slow in configurations:
+        if fast < 2 or slow < 3 or fast >= slow or slow >= initial_train:
+            raise ValueError("Every SMA pair must satisfy 2 <= fast < slow < initial training bars.")
+
+    boundaries = [initial_train + remaining * i // n_folds for i in range(n_folds + 1)]
+    rows = []
+    for fold in range(n_folds):
+        start, end = boundaries[fold], boundaries[fold + 1]
+        training = clean.iloc[:start]
+        # Choose settings exclusively from the past, never from this fold's test.
+        candidates = []
+        for fast, slow in configurations:
+            history, _ = run_backtest(training, fast, slow, fee_pct, slippage_pct)
+            train_return = float((1 + history["Strategy Return"]).prod() - 1)
+            candidates.append((train_return, fast, slow))
+        best_return, best_fast, best_slow = max(
+            candidates, key=lambda item: (item[0], -item[1], -item[2])
+        )
+        # Run through the test end so the signal has its real historical warm-up.
+        full, _ = run_backtest(clean.iloc[:end], best_fast, best_slow, fee_pct, slippage_pct)
+        test = full.loc[full.index.isin(clean.index[start:end])]
+        if len(test) != end - start:
+            raise ValueError("Test window could not be aligned to the price history.")
+        test_return = float((1 + test["Strategy Return"]).prod() - 1)
+        benchmark_return = float((1 + test["Buy & Hold Return"]).prod() - 1)
+        test_equity = (1 + test["Strategy Return"]).cumprod()
+        rows.append({
+            "Fold": fold + 1,
+            "Train end": str(clean.index[start - 1].date()),
+            "Test start": str(clean.index[start].date()),
+            "Test end": str(clean.index[end - 1].date()),
+            "Selected fast SMA": best_fast,
+            "Selected slow SMA": best_slow,
+            "Train return (%)": best_return * 100,
+            "Test return (%)": test_return * 100,
+            "Test Buy & Hold (%)": benchmark_return * 100,
+            "Test excess vs Buy & Hold (pp)": (test_return - benchmark_return) * 100,
+            "Test max drawdown (%)": _max_drawdown(test_equity),
+            "Test position changes": int((test["Trades"] > 0).sum()),
+            "Train bars": start,
+            "Test bars": len(test),
+        })
+    table = pd.DataFrame(rows)
+    table["Test max drawdown (%)"] *= 100
+    return table
