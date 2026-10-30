@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from crypto_radar.backtest import compare_execution_cost_scenarios, compare_sma_parameter_sets, run_backtest
+from crypto_radar.backtest import compare_execution_cost_scenarios, compare_sma_parameter_sets, run_backtest, walk_forward_sma_evaluation
 from crypto_radar.data import SYMBOLS, assess_price_data, fetch_prices
 from crypto_radar.income import build_scenarios, calculate_income_scenario
 from crypto_radar.portfolio import build_portfolio_snapshot
@@ -146,6 +146,40 @@ with market_tab:
             st.info(f"Parameter comparison is not available for this history: {error}")
     else:
         st.info("At least 20 valid daily price bars are needed for the parameter lab.")
+
+
+    st.divider()
+    st.subheader("🔁 Walk-forward SMA lab")
+    st.write("Choose SMA settings using past candles only, then test them on the next unseen block. Repeat with expanding training history and non-overlapping test blocks.")
+    if len(prices) >= 120:
+        wf_candidates = [(3, 5), (5, 10), (5, 15), (10, 30), (20, 50), (20, 100), (50, 150)]
+        wf_initial_train = max(90, len(prices) // 2)
+        wf_configs = [(fast, slow) for fast, slow in wf_candidates if slow < wf_initial_train]
+        try:
+            wf_table = walk_forward_sma_evaluation(
+                prices, wf_configs, n_folds=3,
+                fee_pct=fee_pct, slippage_pct=slippage_pct,
+            )
+            st.dataframe(wf_table.round(2), use_container_width=True, hide_index=True)
+            wf_return = (1 + wf_table["Test return (%)"] / 100).prod() - 1
+            wf_hold = (1 + wf_table["Test Buy & Hold (%)"] / 100).prod() - 1
+            w1, w2, w3 = st.columns(3)
+            w1.metric("Combined out-of-sample return", f"{wf_return:.2%}")
+            w2.metric("Combined Buy & Hold return", f"{wf_hold:.2%}")
+            w3.metric("Out-of-sample excess", f"{(wf_return - wf_hold) * 100:+.2f} pp")
+            st.download_button(
+                "Download walk-forward results (CSV)",
+                data=wf_table.to_csv(index=False).encode("utf-8"),
+                file_name=f"walk_forward_{symbol.lower()}.csv",
+                mime="text/csv",
+            )
+            st.caption("Three chronological, non-overlapping test blocks. Each fold selects the highest net training return using only earlier candles; signals have a one-bar lag. Results include estimated costs. Repeatedly changing candidates after seeing these results can still overfit.")
+            if "DEMO DATA" in source_label:
+                st.warning("Walk-forward results use demonstration prices, not actual market history.")
+        except ValueError as error:
+            st.info(f"Walk-forward lab is not available: {error}")
+    else:
+        st.info("Choose a longer history (at least 120 valid daily bars) to run walk-forward testing.")
 
 with paper_tab:
     st.subheader("Signal-driven Paper Trading")
