@@ -161,6 +161,25 @@ with market_tab:
                 fee_pct=fee_pct, slippage_pct=slippage_pct,
             )
             st.dataframe(wf_table.round(2), use_container_width=True, hide_index=True)
+
+            st.markdown("**Return by unseen test period (%)**")
+            wf_chart = wf_table.set_index("Fold")[["Test return (%)", "Test Buy & Hold (%)"]].rename(
+                columns={"Test return (%)": "SMA strategy", "Test Buy & Hold (%)": "Buy & Hold"}
+            )
+            st.bar_chart(wf_chart, x_label="Walk-forward test period", y_label="Return (%)")
+            st.markdown("**Strategy advantage by period (percentage points)**")
+            st.bar_chart(
+                wf_table.set_index("Fold")[["Test excess vs Buy & Hold (pp)"]].rename(
+                    columns={"Test excess vs Buy & Hold (pp)": "Strategy minus Buy & Hold"}
+                ),
+                x_label="Walk-forward test period",
+                y_label="Excess return (pp)",
+            )
+            winning_folds = int((wf_table["Test excess vs Buy & Hold (pp)"] > 0).sum())
+            st.caption(
+                f"Strategy beat Buy & Hold in {winning_folds} of {len(wf_table)} held-out periods. "
+                "A positive bar indicates outperformance, not necessarily a profit."
+            )
             wf_return = (1 + wf_table["Test return (%)"] / 100).prod() - 1
             wf_hold = (1 + wf_table["Test Buy & Hold (%)"] / 100).prod() - 1
             w1, w2, w3 = st.columns(3)
