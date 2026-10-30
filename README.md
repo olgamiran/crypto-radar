@@ -14,7 +14,7 @@ A beginner-friendly crypto market dashboard, backtesting lab, and **virtual cryp
 - Execution-cost stress test comparing 1×, 2×, and 4× cost assumptions on the same historical dates, with benchmark excess return, drawdown, trade count, and CSV export
 - Fair strategy-versus-buy-and-hold comparison after the moving-average warm-up period
 - SMA parameter lab comparing fixed settings on chronological training and holdout periods, including holdout return, excess return vs. Buy & Hold, drawdown, and trade count
-- Expanding-window walk-forward SMA lab: select settings using only past data, evaluate three non-overlapping future blocks, compare against Buy & Hold, and export CSV
+- Expanding-window walk-forward SMA lab: select settings using only past data, evaluate three non-overlapping future blocks, chart per-fold strategy/Buy & Hold returns and excess performance, compare compounded out-of-sample results, and export CSV
 - Drawdown for strategy and benchmark, comparison dates, volatility, Sharpe ratio, CAGR, and trade count
 - Signal-driven historical paper trading with virtual cash, simulated trade journal, equity curve, same-period buy-and-hold benchmark, and CSV export
 - Strategy-vs-buy-and-hold equity curves
