@@ -86,3 +86,41 @@ def test_execution_cost_scenarios_use_same_history_and_increasing_costs():
     assert table["Slippage per change (%)"].tolist() == [0.05, 0.1, 0.2]
     assert table["Strategy return (%)"].iloc[0] >= table["Strategy return (%)"].iloc[1]
     assert table["Strategy return (%)"].iloc[1] >= table["Strategy return (%)"].iloc[2]
+
+
+def test_walk_forward_has_strictly_ordered_nonoverlapping_holdouts():
+    from crypto_radar.backtest import walk_forward_sma_evaluation
+
+    prices = sample_prices(days=240)
+    table = walk_forward_sma_evaluation(prices, [(5, 15), (10, 30)], n_folds=3)
+    assert len(table) == 3
+    assert table["Fold"].tolist() == [1, 2, 3]
+    assert table["Test bars"].sum() == 120
+    assert (table["Train bars"].diff().dropna() > 0).all()
+    for _, row in table.iterrows():
+        assert row["Train end"] < row["Test start"] <= row["Test end"]
+        assert (row["Selected fast SMA"], row["Selected slow SMA"]) in [(5, 15), (10, 30)]
+    assert all(
+        table.iloc[i]["Test end"] < table.iloc[i + 1]["Test start"]
+        for i in range(len(table) - 1)
+    )
+
+
+def test_walk_forward_selection_ignores_future_price_changes():
+    from crypto_radar.backtest import walk_forward_sma_evaluation
+
+    prices = sample_prices(days=240)
+    altered = prices.copy()
+    altered.loc[altered.index[120]:, "Close"] *= 1.25
+    original = walk_forward_sma_evaluation(prices, [(5, 15), (10, 30)], n_folds=3)
+    changed = walk_forward_sma_evaluation(altered, [(5, 15), (10, 30)], n_folds=3)
+    assert original.loc[0, "Selected fast SMA"] == changed.loc[0, "Selected fast SMA"]
+    assert original.loc[0, "Selected slow SMA"] == changed.loc[0, "Selected slow SMA"]
+    assert original.loc[0, "Train return (%)"] == pytest.approx(changed.loc[0, "Train return (%)"])
+
+
+def test_walk_forward_rejects_insufficient_history():
+    from crypto_radar.backtest import walk_forward_sma_evaluation
+
+    with pytest.raises(ValueError, match="120"):
+        walk_forward_sma_evaluation(sample_prices(days=100), [(5, 15)])
