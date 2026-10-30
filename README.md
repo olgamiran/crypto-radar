@@ -14,6 +14,7 @@ A beginner-friendly crypto market dashboard, backtesting lab, and **virtual cryp
 - Execution-cost stress test comparing 1×, 2×, and 4× cost assumptions on the same historical dates, with benchmark excess return, drawdown, trade count, and CSV export
 - Fair strategy-versus-buy-and-hold comparison after the moving-average warm-up period
 - SMA parameter lab comparing fixed settings on chronological training and holdout periods, including holdout return, excess return vs. Buy & Hold, drawdown, and trade count
+- Expanding-window walk-forward SMA lab: select settings using only past data, evaluate three non-overlapping future blocks, compare against Buy & Hold, and export CSV
 - Drawdown for strategy and benchmark, comparison dates, volatility, Sharpe ratio, CAGR, and trade count
 - Signal-driven historical paper trading with virtual cash, simulated trade journal, equity curve, same-period buy-and-hold benchmark, and CSV export
 - Strategy-vs-buy-and-hold equity curves
@@ -92,6 +93,8 @@ The example strategy holds the asset when the fast simple moving average (SMA) i
 
 The execution-cost stress test repeats the same SMA signals and history with 1×, 2×, and 4× the selected fee and slippage assumptions. It helps show whether a strategy's historical result is fragile to trading costs. Multipliers are illustrative, not exchange-specific estimates; this does not model order-book depth, actual spread, taxes, or market impact.
 
+The walk-forward lab starts with at least 90 training candles (or half the selected history, whichever is greater). For each of three later, non-overlapping test blocks, it selects the candidate SMA pair with the best net return on the preceding expanding training history, then reports out-of-sample return, Buy & Hold, drawdown, and position changes. It requires at least 120 valid candles. Combined out-of-sample returns compound the three held-out blocks; training periods are not counted. Candidate selection, modeled fees, and one-bar signal lag are fixed by the code. Repeatedly inspecting results and editing candidate sets can still introduce selection bias.
+
 The SMA parameter lab uses a chronological 70% training / 30% holdout split and reports the later period separately. It is intended to reduce accidental tuning on the full history, but repeated inspection of holdout results can still introduce selection bias; a proper walk-forward test and more realistic execution modeling would be needed before drawing strong conclusions.
 
 This is an educational daily-close model, not a production trading engine. It uses a flat slippage estimate rather than a live bid/ask spread; taxes, exchange outages, funding, liquidity constraints, and actual order execution are not modeled. Parameter tuning can overfit historical data.
@@ -150,7 +153,7 @@ crypto-radar/
 - [ ] Add historical yield inputs with a source and timestamp for every rate
 - [x] Add chronological train/test SMA comparison
 - [x] Add execution-cost stress testing
-- [ ] Add rolling walk-forward evaluation
+- [x] Add expanding-window walk-forward evaluation
 - [x] Add portable JSON backup and restore for virtual portfolio history
 - [ ] Add private durable storage for deployed multi-user use (requires authentication and per-user storage)
 - [x] Add Docker packaging for reproducible local runs
