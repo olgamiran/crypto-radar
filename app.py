@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from crypto_radar.backtest import compare_execution_cost_scenarios, compare_sma_parameter_sets, run_backtest, walk_forward_sma_evaluation
+from crypto_radar.backtest import compare_execution_cost_scenarios, compare_sma_parameter_sets, run_backtest, summarize_walk_forward_stability, walk_forward_sma_evaluation
 from crypto_radar.data import SYMBOLS, assess_price_data, fetch_prices
 from crypto_radar.income import build_scenarios, calculate_income_scenario
 from crypto_radar.portfolio import build_portfolio_snapshot
@@ -186,6 +186,37 @@ with market_tab:
             w1.metric("Combined out-of-sample return", f"{wf_return:.2%}")
             w2.metric("Combined Buy & Hold return", f"{wf_hold:.2%}")
             w3.metric("Out-of-sample excess", f"{(wf_return - wf_hold) * 100:+.2f} pp")
+            st.markdown("**Strategy stability — descriptive diagnostics**")
+            wf_stability, wf_frequency = summarize_walk_forward_stability(wf_table)
+            s1, s2, s3, s4 = st.columns(4)
+            s1.metric("Profitable test periods", f"{wf_stability['profitable_folds']} / {wf_stability['fold_count']}")
+            s2.metric("Beat Buy & Hold", f"{wf_stability['outperforming_folds']} / {wf_stability['fold_count']}")
+            s3.metric("Worst test return", f"{wf_stability['worst_fold_return_pct']:+.2f}%")
+            s4.metric("Return range", f"{wf_stability['return_range_pp']:.2f} pp")
+            st.caption(
+                f"Best test return: {wf_stability['best_fold_return_pct']:+.2f}%. "
+                f"Standard deviation across test-period returns: {wf_stability['return_std_pp']:.2f} pp. "
+                "A wide range suggests results differ considerably between periods."
+            )
+            st.markdown("**How often each SMA pair was selected**")
+            wf_frequency = wf_frequency.copy()
+            wf_frequency["SMA pair"] = (
+                wf_frequency["Selected fast SMA"].astype(str) + " / "
+                + wf_frequency["Selected slow SMA"].astype(str)
+            )
+            st.bar_chart(wf_frequency.set_index("SMA pair")[["Folds selected"]],
+                         x_label="Fast / slow SMA", y_label="Test periods selected")
+            st.caption(
+                f"{wf_stability['distinct_sma_pairs']} different SMA pair(s) were selected. "
+                "These are descriptive statistics from only three historical test periods, "
+                "not a reliability score, statistical significance test, or future forecast."
+            )
+            st.download_button(
+                "Download SMA selection frequencies (CSV)",
+                data=wf_frequency.to_csv(index=False).encode("utf-8"),
+                file_name=f"walk_forward_sma_frequency_{symbol.lower()}.csv",
+                mime="text/csv",
+            )
             st.download_button(
                 "Download walk-forward results (CSV)",
                 data=wf_table.to_csv(index=False).encode("utf-8"),
