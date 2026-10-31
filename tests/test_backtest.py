@@ -124,3 +124,37 @@ def test_walk_forward_rejects_insufficient_history():
 
     with pytest.raises(ValueError, match="120"):
         walk_forward_sma_evaluation(sample_prices(days=100), [(5, 15)])
+
+
+def test_walk_forward_stability_counts_and_selection_frequency():
+    from crypto_radar.backtest import summarize_walk_forward_stability
+
+    folds = pd.DataFrame({
+        "Fold": [1, 2, 3],
+        "Selected fast SMA": [5, 10, 5],
+        "Selected slow SMA": [15, 30, 15],
+        "Test return (%)": [-4.0, 2.0, 8.0],
+        "Test Buy & Hold (%)": [-3.0, 1.0, 9.0],
+        "Test excess vs Buy & Hold (pp)": [-1.0, 1.0, -1.0],
+    })
+    summary, frequency = summarize_walk_forward_stability(folds)
+    assert summary["profitable_folds"] == 2
+    assert summary["outperforming_folds"] == 1
+    assert summary["worst_fold_return_pct"] == -4.0
+    assert summary["best_fold_return_pct"] == 8.0
+    assert summary["return_range_pp"] == 12.0
+    assert summary["distinct_sma_pairs"] == 2
+    assert summary["most_selected_pair_folds"] == 2
+    assert frequency["Folds selected"].tolist() == [2, 1]
+
+
+def test_walk_forward_stability_rejects_missing_values():
+    from crypto_radar.backtest import summarize_walk_forward_stability
+
+    folds = pd.DataFrame({
+        "Fold": [1], "Selected fast SMA": [5], "Selected slow SMA": [15],
+        "Test return (%)": [float("nan")], "Test Buy & Hold (%)": [1.0],
+        "Test excess vs Buy & Hold (pp)": [0.0],
+    })
+    with pytest.raises(ValueError, match="missing"):
+        summarize_walk_forward_stability(folds)
