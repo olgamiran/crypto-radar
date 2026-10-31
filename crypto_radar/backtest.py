@@ -246,3 +246,36 @@ def walk_forward_sma_evaluation(
     table = pd.DataFrame(rows)
     table["Test max drawdown (%)"] *= 100
     return table
+
+
+def summarize_walk_forward_stability(folds: pd.DataFrame) -> tuple[dict[str, float | int], pd.DataFrame]:
+    """Descriptive out-of-sample diagnostics; not a predictive confidence score."""
+    required = {
+        "Fold", "Selected fast SMA", "Selected slow SMA", "Test return (%)",
+        "Test Buy & Hold (%)", "Test excess vs Buy & Hold (pp)",
+    }
+    if folds.empty or not required.issubset(folds.columns):
+        raise ValueError("A non-empty walk-forward table with required columns is needed.")
+    if folds[list(required - {"Fold"})].isna().any().any():
+        raise ValueError("Walk-forward results cannot contain missing values.")
+    returns = folds["Test return (%)"].astype(float)
+    excess = folds["Test excess vs Buy & Hold (pp)"].astype(float)
+    settings = (
+        folds.groupby(["Selected fast SMA", "Selected slow SMA"], sort=True)
+        .size().reset_index(name="Folds selected")
+        .sort_values(["Folds selected", "Selected fast SMA", "Selected slow SMA"],
+                     ascending=[False, True, True])
+        .reset_index(drop=True)
+    )
+    summary = {
+        "fold_count": len(folds),
+        "profitable_folds": int((returns > 0).sum()),
+        "outperforming_folds": int((excess > 0).sum()),
+        "worst_fold_return_pct": float(returns.min()),
+        "best_fold_return_pct": float(returns.max()),
+        "return_range_pp": float(returns.max() - returns.min()),
+        "return_std_pp": float(returns.std(ddof=0)),
+        "distinct_sma_pairs": len(settings),
+        "most_selected_pair_folds": int(settings["Folds selected"].max()),
+    }
+    return summary, settings
