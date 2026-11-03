@@ -158,3 +158,23 @@ def test_walk_forward_stability_rejects_missing_values():
     })
     with pytest.raises(ValueError, match="missing"):
         summarize_walk_forward_stability(folds)
+
+
+@pytest.mark.parametrize("fold_count", [2, 3, 4, 5, 6])
+def test_walk_forward_configurable_fold_count(fold_count):
+    from crypto_radar.backtest import walk_forward_sma_evaluation
+
+    prices = sample_prices(days=240)
+    folds = walk_forward_sma_evaluation(prices, [(5, 15), (10, 30)], n_folds=fold_count)
+    assert len(folds) == fold_count
+    assert folds["Test bars"].sum() == 120
+    assert folds["Fold"].tolist() == list(range(1, fold_count + 1))
+    assert (folds["Test bars"] >= 10).all()
+
+
+@pytest.mark.parametrize("fold_count", [1, 7])
+def test_walk_forward_rejects_unsupported_fold_count(fold_count):
+    from crypto_radar.backtest import walk_forward_sma_evaluation
+
+    with pytest.raises(ValueError, match="folds"):
+        walk_forward_sma_evaluation(sample_prices(days=240), [(5, 15)], n_folds=fold_count)
