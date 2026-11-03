@@ -151,13 +151,14 @@ with market_tab:
     st.divider()
     st.subheader("🔁 Walk-forward SMA lab")
     st.write("Choose SMA settings using past candles only, then test them on the next unseen block. Repeat with expanding training history and non-overlapping test blocks.")
+    wf_fold_count = st.slider("Walk-forward test periods", min_value=2, max_value=6, value=3, step=1, help="More periods means shorter unseen test blocks. This is not a guarantee of stronger evidence.")
     if len(prices) >= 120:
         wf_candidates = [(3, 5), (5, 10), (5, 15), (10, 30), (20, 50), (20, 100), (50, 150)]
         wf_initial_train = max(90, len(prices) // 2)
         wf_configs = [(fast, slow) for fast, slow in wf_candidates if slow < wf_initial_train]
         try:
             wf_table = walk_forward_sma_evaluation(
-                prices, wf_configs, n_folds=3,
+                prices, wf_configs, n_folds=wf_fold_count,
                 fee_pct=fee_pct, slippage_pct=slippage_pct,
             )
             st.dataframe(wf_table.round(2), use_container_width=True, hide_index=True)
@@ -208,7 +209,7 @@ with market_tab:
                          x_label="Fast / slow SMA", y_label="Test periods selected")
             st.caption(
                 f"{wf_stability['distinct_sma_pairs']} different SMA pair(s) were selected. "
-                "These are descriptive statistics from only three historical test periods, "
+                f"These are descriptive statistics from only {wf_fold_count} historical test periods, "
                 "not a reliability score, statistical significance test, or future forecast."
             )
             st.download_button(
@@ -223,13 +224,73 @@ with market_tab:
                 file_name=f"walk_forward_{symbol.lower()}.csv",
                 mime="text/csv",
             )
-            st.caption("Three chronological, non-overlapping test blocks. Each fold selects the highest net training return using only earlier candles; signals have a one-bar lag. Results include estimated costs. Repeatedly changing candidates after seeing these results can still overfit.")
+            st.caption(f"{wf_fold_count} chronological, non-overlapping test blocks. Each fold selects the highest net training return using only earlier candles; signals have a one-bar lag. Results include estimated costs. Repeatedly changing candidates after seeing these results can still overfit.")
             if "DEMO DATA" in source_label:
                 st.warning("Walk-forward results use demonstration prices, not actual market history.")
         except ValueError as error:
             st.info(f"Walk-forward lab is not available: {error}")
     else:
         st.info("Choose a longer history (at least 120 valid daily bars) to run walk-forward testing.")
+
+
+    st.divider()
+    with st.expander("🌍 Compare walk-forward results across crypto assets", expanded=False):
+        st.write("Apply the same history length, SMA candidate rules, number of test periods, fees and slippage to selected assets. Each asset chooses SMA settings from its own past.")
+        comparison_assets = st.multiselect(
+            "Assets to compare", options=list(SYMBOLS.keys()),
+            default=list(SYMBOLS.keys())[:3],
+            key="wf_compare_assets",
+        )
+        if st.button("Run cross-asset comparison", key="run_wf_asset_comparison"):
+            asset_rows = []
+            for asset_name in comparison_assets:
+                asset_symbol = SYMBOLS[asset_name]
+                asset_prices, asset_source = load_market_prices(asset_symbol, period)
+                valid_count = len(asset_prices[["Close"]].dropna())
+                asset_initial_train = max(90, valid_count // 2)
+                asset_configs = [
+                    (fast, slow) for fast, slow in
+                    [(3, 5), (5, 10), (5, 15), (10, 30), (20, 50), (20, 100), (50, 150)]
+                    if slow < asset_initial_train
+                ]
+                try:
+                    asset_folds = walk_forward_sma_evaluation(
+                        asset_prices, asset_configs, n_folds=wf_fold_count,
+                        fee_pct=fee_pct, slippage_pct=slippage_pct,
+                    )
+                    asset_stability, _ = summarize_walk_forward_stability(asset_folds)
+                    asset_strategy = (1 + asset_folds["Test return (%)"] / 100).prod() - 1
+                    asset_hold = (1 + asset_folds["Test Buy & Hold (%)"] / 100).prod() - 1
+                    asset_rows.append({
+                        "Asset": asset_name,
+                        "Data source": "DEMO" if "DEMO DATA" in asset_source else "Yahoo Finance",
+                        "Test start": asset_folds["Test start"].iloc[0],
+                        "Test end": asset_folds["Test end"].iloc[-1],
+                        "Out-of-sample return (%)": asset_strategy * 100,
+                        "Buy & Hold (%)": asset_hold * 100,
+                        "Excess return (pp)": (asset_strategy - asset_hold) * 100,
+                        "Profitable periods": asset_stability["profitable_folds"],
+                        "Periods beating Buy & Hold": asset_stability["outperforming_folds"],
+                        "Test periods": wf_fold_count,
+                    })
+                except ValueError as error:
+                    st.info(f"{asset_name}: unavailable — {error}")
+            if asset_rows:
+                asset_comparison = pd.DataFrame(asset_rows)
+                st.dataframe(asset_comparison.round(2), hide_index=True, use_container_width=True)
+                st.download_button(
+                    "Download cross-asset comparison (CSV)",
+                    data=asset_comparison.to_csv(index=False).encode("utf-8"),
+                    file_name="walk_forward_asset_comparison.csv",
+                    mime="text/csv",
+                )
+                if (asset_comparison["Data source"] == "DEMO").any():
+                    st.warning("One or more assets use generated DEMO prices. Do not treat those rows as real market evidence.")
+                if asset_comparison["Test start"].nunique() > 1 or asset_comparison["Test end"].nunique() > 1:
+                    st.warning("Assets have different test date ranges. Compare returns cautiously; identical history selections do not guarantee identical dates.")
+                st.caption("Results are historical, not forecasts. Each asset is independently fitted using past prices; the table is not a portfolio backtest.")
+            elif not comparison_assets:
+                st.info("Select at least one asset to compare.")
 
 with paper_tab:
     st.subheader("Signal-driven Paper Trading")
