@@ -63,3 +63,49 @@ def build_scenarios(
         row["asset_price_change_pct"] = price_change
         scenarios.append(row)
     return scenarios
+
+
+def compare_income_methods(
+    principal: float,
+    months: int,
+    price_change_pct: float,
+    assumptions: list[dict[str, float | str]],
+) -> list[dict[str, float | str]]:
+    """Compare user-entered hypothetical methods against the same holding baseline.
+
+    Each row has method, apr_pct, fee_pct and optional price_change_pct.
+    The per-method price change permits a stablecoin/depeg assumption distinct
+    from a volatile asset. No APR or provider data is supplied by this model.
+    """
+    import math
+
+    if not assumptions:
+        raise ValueError("Provide at least one income method.")
+    if not math.isfinite(float(principal)) or principal <= 0:
+        raise ValueError("Starting virtual balance must be positive and finite.")
+    if not isinstance(months, int) or not 1 <= months <= 60:
+        raise ValueError("Duration must be between 1 and 60 months.")
+    if not math.isfinite(float(price_change_pct)) or price_change_pct < -100:
+        raise ValueError("Price change must be finite and at least -100 percent.")
+    rows = []
+    for item in assumptions:
+        name = str(item["method"])
+        apr = float(item["apr_pct"])
+        fee = float(item["fee_pct"])
+        change = float(item.get("price_change_pct", price_change_pct))
+        if not name.strip() or not all(map(math.isfinite, (apr, fee, change))):
+            raise ValueError("Method names and numeric assumptions must be valid.")
+        if not 0 <= apr <= 1000 or not 0 <= fee < 100 or not -100 <= change <= 1000:
+            raise ValueError("APR, fees, or asset price change is outside the allowed range.")
+        result = calculate_income_scenario(principal, apr, months, change, fee)
+        rows.append({
+            "Method": name,
+            "Assumed APR (%)": apr,
+            "Asset price change (%)": change,
+            "One-off fee (%)": fee,
+            "Virtual rewards ($)": result["rewards"],
+            "Virtual ending value ($)": result["ending_value"],
+            "Virtual profit / loss ($)": result["profit_loss"],
+            "Virtual return (%)": result["return_pct"],
+        })
+    return rows
