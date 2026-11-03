@@ -21,6 +21,7 @@ A beginner-friendly crypto market dashboard, backtesting lab, and **virtual cryp
 - Return, CAGR, volatility, Sharpe ratio, maximum drawdown, and trade-count metrics
 - Downloadable CSV of backtest output
 - **Crypto Income Lab:** estimate hypothetical rewards using an assumed APR, duration, and one-off fee
+- **Virtual income-method comparison:** compare buy-and-hold, native staking, centralized lending, DeFi lending, and stablecoin yield using user-entered APR, fees, and separate volatile-asset/depeg price scenarios; export CSV and inspect qualitative liquidity and risk notes
 - **Price stress test:** compare illustrative -50%, -20%, 0%, and +20% price-change scenarios
 - **Virtual Portfolio:** record simulated buys, sells, reward credits, and fees; mark positions to manually entered prices; review cash, holdings, equity, and profit/loss
 - CSV export of the virtual transaction ledger
@@ -85,7 +86,7 @@ Prices are entered manually and are not live quotes. Transactions are stored in 
 
 The calculator models a constant user-entered nominal APR compounded monthly. It applies a hypothetical asset-price change to the starting balance plus modeled rewards and subtracts a one-off fee based on the initial balance. It does **not** model taxes, changing rates, lock-up periods, liquidity constraints, stablecoin depegs, slashing, hacks, or provider/protocol failure. A positive yield can still result in an overall loss if the asset price falls.
 
-The price paths are stress-test examples, not predictions or recommended allocations. Do not interpret the APR field as a live or verified offer.
+The income-method comparison uses only user-entered hypothetical APR and fee assumptions. Buy-and-hold is fixed at zero yield; stablecoin products have a separate price-change/depeg input. Results assume monthly compounding and do not risk-adjust returns or model defaults, liquidity freezes, slashing, exploits, or variable rates. The qualitative risk notes are educational and should not be interpreted as provider endorsements.\n\nThe price paths are stress-test examples, not predictions or recommended allocations. Do not interpret the APR field as a live or verified offer.
 
 ## Backtest assumptions
 
@@ -149,7 +150,7 @@ crypto-radar/
 - [x] Add illustrative price stress scenarios
 - [x] Add a virtual portfolio ledger with accounting validation
 - [x] Add an educational yield-mechanism catalogue with risk notes
-- [ ] Add explicit scenario comparison templates for staking, lending, stablecoins, and holding
+- [x] Add explicit scenario comparison templates for staking, lending, stablecoins, and holding
 - [ ] Add historical yield inputs with a source and timestamp for every rate
 - [x] Add chronological train/test SMA comparison
 - [x] Add execution-cost stress testing
