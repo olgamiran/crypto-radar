@@ -5,7 +5,7 @@ import streamlit as st
 
 from crypto_radar.backtest import compare_execution_cost_scenarios, compare_sma_parameter_sets, run_backtest, summarize_walk_forward_stability, walk_forward_sma_evaluation
 from crypto_radar.data import SYMBOLS, assess_price_data, fetch_prices
-from crypto_radar.income import build_scenarios, calculate_income_scenario
+from crypto_radar.income import build_scenarios, calculate_income_scenario, compare_income_methods
 from crypto_radar.portfolio import build_portfolio_snapshot
 from crypto_radar.paper_trading import simulate_sma_paper_trades
 import json
@@ -347,6 +347,78 @@ with income_tab:
         table.columns = ["Asset price change (%)", "Rewards ($)", "Fees ($)", "Ending value ($)", "Profit / loss ($)", "Return (%)"]
         st.dataframe(table.round(2), use_container_width=True, hide_index=True)
         st.caption("The table assumes price changes of -50%, -20%, 0%, and +20%. These are illustrative scenarios, not forecasts.")
+
+    st.divider()
+    st.subheader("🧭 Compare virtual crypto-income methods")
+    st.write("Compare hypothetical outcomes using your own APR and fee assumptions. These values are not live yields, offers, or recommendations.")
+    method_catalog = {
+        "Buy and hold": "hold",
+        "Native staking": "native-staking",
+        "Centralized lending": "centralized-lending",
+        "DeFi lending": "defi-lending",
+        "Stablecoin yield": "stablecoin-yield",
+    }
+    research_by_id = {method["id"]: method for method in get_research_methods()}
+    with st.form("income_method_comparison"):
+        virtual_amount = st.number_input("Comparison balance (virtual USD)", min_value=1.0, max_value=1_000_000_000.0, value=1000.0, step=100.0, key="comparison_amount")
+        comparison_months = st.slider("Comparison duration (months)", 1, 60, 12, key="comparison_months")
+        volatile_change = st.slider("Volatile-asset price change (%)", -100, 100, 0, step=5, key="comparison_volatile_change")
+        stable_change = st.slider("Stablecoin price change / depeg scenario (%)", -100, 20, 0, step=5, key="comparison_stable_change")
+        selected_methods = st.multiselect("Methods", list(method_catalog), default=list(method_catalog), key="comparison_methods")
+        st.caption("Enter illustrative APR and one-off fees for each method. Zero APR is the buy-and-hold baseline.")
+        method_assumptions = []
+        for method_name in selected_methods:
+            if method_name == "Buy and hold":
+                assumed_apr = 0.0
+                st.write("**Buy and hold** — 0% yield by definition")
+            else:
+                assumed_apr = st.number_input(
+                    f"{method_name}: assumed APR (%)", 0.0, 1000.0, 0.0,
+                    step=0.5, key=f"compare_apr_{method_catalog[method_name]}"
+                )
+            assumed_fee = st.number_input(
+                f"{method_name}: one-off fee (%)", 0.0, 99.0, 0.0,
+                step=0.1, key=f"compare_fee_{method_catalog[method_name]}"
+            )
+            method_assumptions.append({
+                "method": method_name,
+                "apr_pct": assumed_apr,
+                "fee_pct": assumed_fee,
+                "price_change_pct": stable_change if method_name == "Stablecoin yield" else volatile_change,
+            })
+        compare_submitted = st.form_submit_button("Compare virtual methods")
+    if compare_submitted:
+        if not method_assumptions:
+            st.info("Select at least one method.")
+        else:
+            comparison_rows = compare_income_methods(
+                virtual_amount, comparison_months, volatile_change, method_assumptions
+            )
+            comparison_table = pd.DataFrame(comparison_rows)
+            st.dataframe(comparison_table.round(2), use_container_width=True, hide_index=True)
+            st.bar_chart(
+                comparison_table.set_index("Method")[["Virtual ending value ($)"]],
+                x_label="Method", y_label="Hypothetical ending value (USD)"
+            )
+            st.download_button(
+                "Download virtual method comparison (CSV)",
+                data=comparison_table.to_csv(index=False).encode("utf-8"),
+                file_name="virtual_crypto_income_methods.csv",
+                mime="text/csv",
+            )
+            st.markdown("**Risk and withdrawal considerations (qualitative)**")
+            for method_name in selected_methods:
+                details = research_by_id[method_catalog[method_name]]
+                with st.expander(method_name):
+                    st.write(f"**How rewards arise:** {details['reward_source']}")
+                    st.write(f"**Liquidity:** {details['liquidity']}")
+                    st.write(f"**Main risks:** {details['key_risks']}")
+                    st.write(f"**What to verify:** {details['what_to_verify']}")
+            st.warning(
+                "The chart is NOT risk-adjusted. It excludes defaults, slashing, smart-contract exploits, "
+                "withdrawal freezes, taxes and changing reward rates. Stablecoins can depeg. "
+                "A larger hypothetical ending value does not mean a safer or better investment."
+            )
 
     with st.expander("Assumptions and limitations"):
         st.markdown("""
