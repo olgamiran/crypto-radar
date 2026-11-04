@@ -23,6 +23,7 @@ A beginner-friendly crypto market dashboard, backtesting lab, and **virtual cryp
 - **Crypto Income Lab:** estimate hypothetical rewards using an assumed APR, duration, and one-off fee
 - **Virtual income-method comparison:** compare buy-and-hold, native staking, centralized lending, DeFi lending, and stablecoin yield using user-entered APR, fees, and separate volatile-asset/depeg price scenarios; export CSV and inspect qualitative liquidity and risk notes
 - **Price stress test:** compare illustrative -50%, -20%, 0%, and +20% price-change scenarios
+- **Research documentation checks:** attach APR/fee assumption sources, verification date, withdrawal terms, and risk notes to saved JSON; flag missing evidence, absent stress tests, and APR assumptions above 30% without treating the result as an investment rating
 - **Research journal:** aggregate saved scenario outcomes, show input assumptions and combined-shock results, compare selected entries, flag different principal/duration groups, and export CSV
 - **Saved income research scenarios:** keep up to 30 comparison/stress assumptions per browser session; export/import validated versioned JSON backups and recalculate results without trusting stored outputs
 - **Passive-income risk stress test:** apply independent APR cuts, additional asset-price declines, and capital-loss haircuts, plus a combined-shock scenario; compare hypothetical ending balances and export CSV
@@ -197,3 +198,7 @@ After running a method comparison or passive-income stress test, open **Saved vi
 ## Research journal
 
 The **Research journal** appears after saving at least one income-method comparison or risk stress scenario. It recomputes the saved assumptions, shows baseline outcomes for each method and combined-shock outcomes for stress tests, and lets you select saved entries to inspect assumptions side by side. Export the journal as CSV. Starting balance and duration are explicit; dollar outcomes with different starting balances or durations are **not directly comparable**. The journal is a temporary, session-scoped research aid, not a history of real investments or measured performance.
+
+## Research documentation quality
+
+In **Saved virtual research scenarios**, select a scenario and record the source or explanation for rate/fee assumptions, the date checked, withdrawal conditions, and key risks. Notes are saved with the scenario and included in its downloadable JSON backup. The research journal displays completeness and warnings, including missing notes, comparison-only snapshots without combined-shock stress testing, and APR assumptions over 30% that warrant extra scrutiny. A fully documented scenario is **not necessarily safe, accurate, or attractive**; the checks assess documentation only. Date strings are checked for validity and future dates are flagged.
