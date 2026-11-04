@@ -168,3 +168,59 @@ def stress_test_income_methods(
                 "Change vs baseline ($)": ending - float(base["Virtual ending value ($)"]),
             })
     return results
+
+
+def validate_income_snapshot(snapshot: object) -> dict:
+    """Validate portable, versioned virtual-income research snapshots."""
+    import math
+
+    if not isinstance(snapshot, dict) or snapshot.get("version") != 1:
+        raise ValueError("Unsupported research snapshot format or version.")
+    name = snapshot.get("name")
+    if not isinstance(name, str) or not 1 <= len(name.strip()) <= 80:
+        raise ValueError("Snapshot name must contain 1–80 characters.")
+    kind = snapshot.get("kind")
+    if kind not in ("comparison", "stress"):
+        raise ValueError("Unknown snapshot kind.")
+    data = snapshot.get("inputs")
+    if not isinstance(data, dict):
+        raise ValueError("Snapshot inputs must be an object.")
+    if not isinstance(data.get("months"), int) or not 1 <= data["months"] <= 60:
+        raise ValueError("Invalid duration.")
+    principal = data.get("principal")
+    if not isinstance(principal, (int, float)) or isinstance(principal, bool) or not math.isfinite(principal) or not 0 < principal <= 1e9:
+        raise ValueError("Invalid virtual principal.")
+    methods = data.get("methods")
+    if not isinstance(methods, list) or not 1 <= len(methods) <= 10:
+        raise ValueError("Snapshot must contain 1–10 methods.")
+    clean_methods = []
+    for item in methods:
+        if not isinstance(item, dict) or not isinstance(item.get("method"), str) or not 1 <= len(item["method"].strip()) <= 80:
+            raise ValueError("Invalid method name.")
+        values = {}
+        for key, minimum, maximum in (("apr_pct", 0, 1000), ("fee_pct", 0, 99.999), ("price_change_pct", -100, 1000)):
+            value = item.get(key)
+            if not isinstance(value, (int, float)) or isinstance(value, bool) or not math.isfinite(value) or not minimum <= value <= maximum:
+                raise ValueError(f"Invalid method assumption: {key}.")
+            values[key] = float(value)
+        clean_methods.append({"method": item["method"].strip(), **values})
+    cleaned = {"principal": float(principal), "months": data["months"], "methods": clean_methods}
+    if kind == "stress":
+        for key, minimum, maximum in (("apr_cut_pct", 0, 100), ("price_shock_pct", -100, 0), ("loss_haircut_pct", 0, 100)):
+            value = data.get(key)
+            if not isinstance(value, (int, float)) or isinstance(value, bool) or not math.isfinite(value) or not minimum <= value <= maximum:
+                raise ValueError(f"Invalid stress assumption: {key}.")
+            cleaned[key] = float(value)
+    return {"version": 1, "name": name.strip(), "kind": kind, "inputs": cleaned}
+
+
+def evaluate_income_snapshot(snapshot: dict) -> list[dict]:
+    """Recompute saved research from assumptions, never trust stored outcomes."""
+    saved = validate_income_snapshot(snapshot)
+    data = saved["inputs"]
+    if saved["kind"] == "stress":
+        return stress_test_income_methods(
+            data["principal"], data["months"], data["methods"],
+            data["apr_cut_pct"], data["price_shock_pct"], data["loss_haircut_pct"],
+        )
+    return compare_income_methods(data["principal"], data["months"], 0.0, data["methods"])
