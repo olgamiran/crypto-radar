@@ -5,7 +5,7 @@ import streamlit as st
 
 from crypto_radar.backtest import compare_execution_cost_scenarios, compare_sma_parameter_sets, run_backtest, summarize_walk_forward_stability, walk_forward_sma_evaluation
 from crypto_radar.data import SYMBOLS, assess_price_data, fetch_prices
-from crypto_radar.income import build_scenarios, calculate_income_scenario, compare_income_methods, stress_test_income_methods, validate_income_snapshot, evaluate_income_snapshot
+from crypto_radar.income import build_scenarios, calculate_income_scenario, compare_income_methods, stress_test_income_methods, validate_income_snapshot, evaluate_income_snapshot, build_income_research_journal
 from crypto_radar.portfolio import build_portfolio_snapshot
 from crypto_radar.paper_trading import simulate_sma_paper_trades
 import json
@@ -533,6 +533,49 @@ with income_tab:
     else:
         st.caption("No saved scenarios yet. Run a method comparison or risk stress test first.")
     st.caption("Session storage is temporary. Download JSON for durable local backup; imported values are validated and results are recalculated.")
+
+    if saved_snapshots:
+        st.subheader("📒 Research journal")
+        st.write("Recalculate and review saved research side by side. Stress experiments include baseline and combined-shock results.")
+        journal_rows = build_income_research_journal(saved_snapshots)
+        journal_table = pd.DataFrame(journal_rows)
+        st.dataframe(journal_table.round(2), use_container_width=True, hide_index=True)
+        st.download_button(
+            "Download research journal (CSV)",
+            data=journal_table.to_csv(index=False).encode("utf-8"),
+            file_name="crypto_radar_research_journal.csv",
+            mime="text/csv",
+            key="income_journal_csv",
+        )
+        comparable_groups = journal_table.groupby(["Starting balance ($)", "Duration (months)"], dropna=False)
+        if len(comparable_groups) > 1:
+            st.info("Saved scenarios use different starting balances or durations. Compare dollar results only within the same starting-balance and duration group.")
+        journal_indices = st.multiselect(
+            "Select saved entries to inspect assumption changes",
+            range(len(saved_snapshots)),
+            default=list(range(min(2, len(saved_snapshots)))),
+            format_func=lambda i: f"{i + 1}. {saved_snapshots[i]['name']}",
+            key="income_journal_compare_indices",
+        )
+        if journal_indices:
+            chosen = journal_table[journal_table["Saved #"].isin([i + 1 for i in journal_indices])]
+            st.dataframe(
+                chosen[["Research name", "Method", "Scenario", "Starting balance ($)",
+                        "Duration (months)", "Assumed APR (%)", "Asset price change (%)",
+                        "Return (%)"]].round(2),
+                use_container_width=True, hide_index=True,
+            )
+            if len(journal_indices) >= 2:
+                first, second = (saved_snapshots[i] for i in journal_indices[:2])
+                first_inputs, second_inputs = first["inputs"], second["inputs"]
+                st.caption(
+                    f"First two selected: starting balance ${first_inputs['principal']:,.2f} → "
+                    f"${second_inputs['principal']:,.2f}; duration "
+                    f"{first_inputs['months']} → {second_inputs['months']} months. "
+                    "APR and price assumptions are shown per method in the table above."
+                )
+        st.caption("The journal is an assumption-based research log, not historical performance tracking or a risk-adjusted ranking.")
+
 
     with st.expander("Assumptions and limitations"):
         st.markdown("""
