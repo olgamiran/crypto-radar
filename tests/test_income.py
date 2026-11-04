@@ -138,3 +138,33 @@ def test_income_snapshot_rejects_invalid_or_untrusted_data():
         validate_income_snapshot({**valid, "inputs": {**valid["inputs"], "principal": float("nan")}})
     with pytest.raises(ValueError):
         validate_income_snapshot({**valid, "inputs": {**valid["inputs"], "methods": []}})
+
+
+def test_income_research_journal_keeps_baselines_and_combined_shocks():
+    from crypto_radar.income import build_income_research_journal
+
+    hold = {"version": 1, "name": "Hold", "kind": "comparison",
+            "inputs": {"principal": 1000, "months": 12, "methods": [
+                {"method": "Buy and hold", "apr_pct": 0, "fee_pct": 0, "price_change_pct": -10}
+            ]}}
+    stress = {"version": 1, "name": "Staking stress", "kind": "stress",
+              "inputs": {"principal": 2000, "months": 24, "methods": [
+                  {"method": "Native staking", "apr_pct": 8, "fee_pct": 1, "price_change_pct": -20}
+              ], "apr_cut_pct": 50, "price_shock_pct": -30, "loss_haircut_pct": 25}}
+    rows = build_income_research_journal([hold, stress])
+    assert len(rows) == 3
+    assert [row["Scenario"] for row in rows] == ["Baseline", "Baseline", "Combined shocks"]
+    assert rows[0]["Starting balance ($)"] == 1000
+    assert rows[1]["Duration (months)"] == 24
+    assert rows[2]["Return (%)"] < rows[1]["Return (%)"]
+    assert rows[2]["Saved #"] == 2
+
+
+def test_income_research_journal_validates_snapshots():
+    from crypto_radar.income import build_income_research_journal
+
+    assert build_income_research_journal([]) == []
+    with pytest.raises(ValueError):
+        build_income_research_journal([{"version": 99}])
+    with pytest.raises(ValueError):
+        build_income_research_journal([{}] * 31)
