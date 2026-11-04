@@ -100,3 +100,41 @@ def test_income_stress_rejects_invalid_shocks():
         stress_test_income_methods(1000, 12, assumption, loss_haircut_pct=101)
     with pytest.raises(ValueError):
         stress_test_income_methods(1000, 12, assumption, apr_cut_pct=float("nan"))
+
+
+def test_income_snapshot_roundtrip_and_recalculation():
+    import json
+    from crypto_radar.income import validate_income_snapshot, evaluate_income_snapshot
+
+    original = {
+        "version": 1, "name": "  Stablecoin stress  ", "kind": "stress",
+        "inputs": {
+            "principal": 1000, "months": 12,
+            "methods": [{"method": "Stablecoin yield", "apr_pct": 5,
+                         "fee_pct": 1, "price_change_pct": -10}],
+            "apr_cut_pct": 50, "price_shock_pct": -20, "loss_haircut_pct": 25,
+        },
+    }
+    restored = validate_income_snapshot(json.loads(json.dumps(original)))
+    assert restored["name"] == "Stablecoin stress"
+    rows = evaluate_income_snapshot(restored)
+    assert len(rows) == 5
+    assert rows[-1]["Virtual ending value ($)"] < rows[0]["Virtual ending value ($)"]
+
+
+def test_income_snapshot_rejects_invalid_or_untrusted_data():
+    from crypto_radar.income import validate_income_snapshot
+
+    valid = {
+        "version": 1, "name": "Test", "kind": "comparison",
+        "inputs": {"principal": 1000, "months": 12,
+                   "methods": [{"method": "Hold", "apr_pct": 0,
+                                "fee_pct": 0, "price_change_pct": 0}]},
+    }
+    assert validate_income_snapshot(valid)["inputs"]["principal"] == 1000
+    with pytest.raises(ValueError):
+        validate_income_snapshot({**valid, "version": 999})
+    with pytest.raises(ValueError):
+        validate_income_snapshot({**valid, "inputs": {**valid["inputs"], "principal": float("nan")}})
+    with pytest.raises(ValueError):
+        validate_income_snapshot({**valid, "inputs": {**valid["inputs"], "methods": []}})
