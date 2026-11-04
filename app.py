@@ -6,6 +6,7 @@ import streamlit as st
 from crypto_radar.backtest import compare_execution_cost_scenarios, compare_sma_parameter_sets, run_backtest, summarize_walk_forward_stability, walk_forward_sma_evaluation
 from crypto_radar.data import SYMBOLS, assess_price_data, fetch_prices
 from crypto_radar.income import build_scenarios, calculate_income_scenario, compare_income_methods, stress_test_income_methods, validate_income_snapshot, evaluate_income_snapshot, build_income_research_journal, assess_income_research_quality
+from crypto_radar.opportunities import validate_opportunity_card, opportunity_card_quality, build_opportunity_table
 from crypto_radar.portfolio import build_portfolio_snapshot
 from crypto_radar.paper_trading import simulate_sma_paper_trades
 import json
@@ -843,6 +844,83 @@ with yield_tab:
         "Documentation coverage uses only saved scenarios in this session and does not prove accuracy or safety. "
         "No live APY figures or recommendations are provided."
     )
+    st.divider()
+
+    st.subheader("📝 Research opportunity cards")
+    st.write("Record a specific protocol or product for manual investigation. Entries are user-supplied notes, not verified offers.")
+    if "yield_opportunity_cards" not in st.session_state:
+        st.session_state["yield_opportunity_cards"] = []
+    method_options = {item["id"]: item["name"] for item in get_research_methods()}
+    with st.form("new_yield_opportunity"):
+        card_name = st.text_input("Opportunity / product name", max_chars=100)
+        card_protocol = st.text_input("Protocol or provider", max_chars=100)
+        card_method = st.selectbox("Yield mechanism", list(method_options), format_func=lambda key: method_options[key])
+        card_asset = st.text_input("Asset or token", max_chars=80)
+        card_chain = st.text_input("Network / chain (if applicable)", max_chars=80)
+        card_source = st.text_input("Primary source URL (HTTP/S)", max_chars=500)
+        card_date = st.date_input("Date checked", value="today", max_value="today")
+        card_has_apr = st.checkbox("Record an observed APR (optional)")
+        card_apr = st.number_input("Observed APR (%)", 0.0, 1000.0, 0.0, step=0.5, disabled=not card_has_apr)
+        card_rewards = st.text_area("How rewards arise", max_chars=1000)
+        card_withdrawals = st.text_area("Withdrawal / lock-up conditions", max_chars=1000)
+        card_risks = st.text_area("Risks and unresolved questions", max_chars=1000)
+        card_submitted = st.form_submit_button("Save research card")
+    if card_submitted:
+        try:
+            new_card = validate_opportunity_card({
+                "version": 1, "name": card_name, "protocol": card_protocol,
+                "method_id": card_method, "asset": card_asset, "chain": card_chain,
+                "source_url": card_source, "checked_on": card_date.isoformat(),
+                "observed_apr_pct": card_apr if card_has_apr else None,
+                "reward_source": card_rewards, "withdrawal_terms": card_withdrawals,
+                "risk_notes": card_risks,
+            })
+            if len(st.session_state["yield_opportunity_cards"]) >= 50:
+                st.warning("Maximum 50 research cards per session.")
+            else:
+                st.session_state["yield_opportunity_cards"].append(new_card)
+                st.success("Research card saved for this session.")
+        except ValueError as error:
+            st.error(str(error))
+    uploaded_cards = st.file_uploader("Import research card JSON", type=["json"], key="yield_card_upload")
+    if uploaded_cards is not None and st.button("Import research card", key="yield_card_import"):
+        try:
+            if uploaded_cards.size > 100_000:
+                raise ValueError("Maximum file size is 100 KB.")
+            imported_card = validate_opportunity_card(json.loads(uploaded_cards.getvalue().decode("utf-8")))
+            if len(st.session_state["yield_opportunity_cards"]) >= 50:
+                raise ValueError("Maximum 50 research cards per session.")
+            st.session_state["yield_opportunity_cards"].append(imported_card)
+            st.success("Research card imported.")
+        except (ValueError, UnicodeDecodeError, TypeError) as error:
+            st.error(f"Cannot import card: {error}")
+    cards = st.session_state["yield_opportunity_cards"]
+    if cards:
+        card_table = pd.DataFrame(build_opportunity_table(cards))
+        st.dataframe(card_table, use_container_width=True, hide_index=True)
+        st.download_button("Export research cards (CSV)", card_table.to_csv(index=False).encode("utf-8"),
+                           file_name="crypto_radar_opportunities.csv", mime="text/csv")
+        chosen_card_index = st.selectbox(
+            "Select research card", range(len(cards)),
+            format_func=lambda i: f"{i + 1}. {cards[i]['name']}",
+            key="yield_selected_card",
+        )
+        chosen_card = cards[chosen_card_index]
+        quality = opportunity_card_quality(chosen_card)
+        st.caption(f"Documented optional fields: {quality['complete_fields']}/{quality['total_fields']}.")
+        if quality["missing"]:
+            st.info("Still to research: " + "; ".join(quality["missing"]))
+        st.download_button(
+            "Download selected card (JSON)",
+            json.dumps(chosen_card, ensure_ascii=False, indent=2).encode("utf-8"),
+            file_name="crypto_radar_opportunity.json", mime="application/json",
+        )
+        if st.button("Remove selected card", key="yield_remove_card"):
+            cards.pop(chosen_card_index)
+            st.rerun()
+    else:
+        st.caption("No opportunity cards saved yet.")
+    st.caption("Cards remain in this Streamlit session only. Export JSON for later restoration. Observed APR values are manual notes, not live data or guaranteed returns.")
     st.divider()
 
     category = st.selectbox("Filter by mechanism", get_categories(), key="yield_category_filter")
