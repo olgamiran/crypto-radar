@@ -5,7 +5,7 @@ import streamlit as st
 
 from crypto_radar.backtest import compare_execution_cost_scenarios, compare_sma_parameter_sets, run_backtest, summarize_walk_forward_stability, walk_forward_sma_evaluation
 from crypto_radar.data import SYMBOLS, assess_price_data, fetch_prices
-from crypto_radar.income import build_scenarios, calculate_income_scenario, compare_income_methods, stress_test_income_methods, validate_income_snapshot, evaluate_income_snapshot, build_income_research_journal
+from crypto_radar.income import build_scenarios, calculate_income_scenario, compare_income_methods, stress_test_income_methods, validate_income_snapshot, evaluate_income_snapshot, build_income_research_journal, assess_income_research_quality
 from crypto_radar.portfolio import build_portfolio_snapshot
 from crypto_radar.paper_trading import simulate_sma_paper_trades
 import json
@@ -512,6 +512,46 @@ with income_tab:
             key="income_selected_snapshot",
         )
         selected_snapshot = saved_snapshots[selected_index]
+        st.markdown("**Research evidence for selected scenario**")
+        current_evidence = selected_snapshot.get("research", {})
+        with st.form("income_evidence_form"):
+            evidence_source = st.text_input(
+                "Source or explanation for APR and fee assumptions",
+                value=current_evidence.get("assumption_source", ""), max_chars=1000
+            )
+            evidence_date = st.text_input(
+                "Date checked (YYYY-MM-DD)",
+                value=current_evidence.get("checked_on", ""), max_chars=10
+            )
+            evidence_withdrawal = st.text_area(
+                "Withdrawal / lock-up terms",
+                value=current_evidence.get("withdrawal_terms", ""), max_chars=1000
+            )
+            evidence_risks = st.text_area(
+                "Risk notes and unknowns",
+                value=current_evidence.get("risk_notes", ""), max_chars=1000
+            )
+            evidence_saved = st.form_submit_button("Save research notes")
+        if evidence_saved:
+            try:
+                selected_snapshot["research"] = {
+                    "assumption_source": evidence_source,
+                    "checked_on": evidence_date,
+                    "withdrawal_terms": evidence_withdrawal,
+                    "risk_notes": evidence_risks,
+                }
+                saved_snapshots[selected_index] = validate_income_snapshot(selected_snapshot)
+                st.success("Research notes saved for this session. Download JSON to retain them.")
+            except ValueError as error:
+                st.error(str(error))
+        quality = assess_income_research_quality(saved_snapshots[selected_index])
+        st.caption(
+            f"Documentation: {quality['documented_fields']}/{quality['total_fields']} fields; "
+            f"stress test: {'yes' if quality['has_stress_test'] else 'no'}. "
+            "This measures documentation, not financial safety."
+        )
+        for warning in quality["warnings"]:
+            st.warning(warning)
         st.download_button(
             "Download selected scenario (JSON)",
             data=json.dumps(selected_snapshot, ensure_ascii=False, indent=2).encode("utf-8"),
@@ -574,6 +614,20 @@ with income_tab:
                     f"{first_inputs['months']} → {second_inputs['months']} months. "
                     "APR and price assumptions are shown per method in the table above."
                 )
+        st.markdown("**Research quality checks**")
+        quality_rows = []
+        for index, snapshot in enumerate(saved_snapshots, start=1):
+            quality = assess_income_research_quality(snapshot)
+            quality_rows.append({
+                "Saved #": index,
+                "Research name": quality["name"],
+                "Documented fields": f"{quality['documented_fields']}/{quality['total_fields']}",
+                "Includes stress test": quality["has_stress_test"],
+                "Review warnings": len(quality["warnings"]),
+                "Documentation status": quality["documentation_status"],
+            })
+        st.dataframe(pd.DataFrame(quality_rows), use_container_width=True, hide_index=True)
+        st.caption("These checks identify missing research context and unusual assumptions; they are not a ranking, endorsement, or investment-risk assessment.")
         st.caption("The journal is an assumption-based research log, not historical performance tracking or a risk-adjusted ranking.")
 
 
