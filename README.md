@@ -23,6 +23,7 @@ A beginner-friendly crypto market dashboard, backtesting lab, and **virtual cryp
 - **Crypto Income Lab:** estimate hypothetical rewards using an assumed APR, duration, and one-off fee
 - **Virtual income-method comparison:** compare buy-and-hold, native staking, centralized lending, DeFi lending, and stablecoin yield using user-entered APR, fees, and separate volatile-asset/depeg price scenarios; export CSV and inspect qualitative liquidity and risk notes
 - **Price stress test:** compare illustrative -50%, -20%, 0%, and +20% price-change scenarios
+- **Research journal:** aggregate saved scenario outcomes, show input assumptions and combined-shock results, compare selected entries, flag different principal/duration groups, and export CSV
 - **Saved income research scenarios:** keep up to 30 comparison/stress assumptions per browser session; export/import validated versioned JSON backups and recalculate results without trusting stored outputs
 - **Passive-income risk stress test:** apply independent APR cuts, additional asset-price declines, and capital-loss haircuts, plus a combined-shock scenario; compare hypothetical ending balances and export CSV
 - **Virtual Portfolio:** record simulated buys, sells, reward credits, and fees; mark positions to manually entered prices; review cash, holdings, equity, and profit/loss
@@ -192,3 +193,7 @@ In Crypto Income Lab, enter a virtual balance, duration, assumed APR, fee, and b
 ## Save and restore income research
 
 After running a method comparison or passive-income stress test, open **Saved virtual research scenarios** in Crypto Income Lab. Give the latest calculation a name and save it for the current Streamlit session. Download its JSON backup for long-term local storage; upload that file and select **Import saved scenario** to restore it in another session. Select **Recalculate saved scenario** to regenerate results from the original assumptions. This is not a server-side account or durable database: session entries may disappear when the session ends, so download backups you want to keep. JSON imports are validated and capped at 100 KB; the app stores no wallet credentials or real transactions.
+
+## Research journal
+
+The **Research journal** appears after saving at least one income-method comparison or risk stress scenario. It recomputes the saved assumptions, shows baseline outcomes for each method and combined-shock outcomes for stress tests, and lets you select saved entries to inspect assumptions side by side. Export the journal as CSV. Starting balance and duration are explicit; dollar outcomes with different starting balances or durations are **not directly comparable**. The journal is a temporary, session-scoped research aid, not a history of real investments or measured performance.
