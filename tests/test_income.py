@@ -168,3 +168,51 @@ def test_income_research_journal_validates_snapshots():
         build_income_research_journal([{"version": 99}])
     with pytest.raises(ValueError):
         build_income_research_journal([{}] * 31)
+
+
+def test_research_quality_flags_missing_evidence_and_comparison_without_stress():
+    from crypto_radar.income import assess_income_research_quality
+
+    snapshot = {"version": 1, "name": "Unverified APR", "kind": "comparison",
+                "inputs": {"principal": 1000, "months": 12, "methods": [
+                    {"method": "Staking", "apr_pct": 35, "fee_pct": 0, "price_change_pct": 0}
+                ]}}
+    result = assess_income_research_quality(snapshot)
+    assert result["documented_fields"] == 0
+    assert not result["has_stress_test"]
+    assert len(result["warnings"]) >= 6
+
+
+def test_research_evidence_survives_snapshot_json_roundtrip():
+    import json
+    from crypto_radar.income import validate_income_snapshot, assess_income_research_quality
+
+    snapshot = {"version": 1, "name": "Documented stress", "kind": "stress",
+                "inputs": {"principal": 1000, "months": 12, "methods": [
+                    {"method": "Staking", "apr_pct": 5, "fee_pct": 1, "price_change_pct": -10}
+                ], "apr_cut_pct": 50, "price_shock_pct": -20, "loss_haircut_pct": 25},
+                "research": {"assumption_source": "Illustrative rate, not a live offer",
+                             "checked_on": "2026-01-01",
+                             "withdrawal_terms": "Unbonding may apply",
+                             "risk_notes": "Slashing and market risk"}}
+    restored = validate_income_snapshot(json.loads(json.dumps(snapshot)))
+    assert restored["research"]["withdrawal_terms"] == "Unbonding may apply"
+    result = assess_income_research_quality(restored)
+    assert result["documented_fields"] == 4
+    assert result["has_stress_test"]
+    assert result["documentation_status"] == "Documented"
+
+
+def test_research_quality_rejects_invalid_metadata_and_future_date():
+    from crypto_radar.income import validate_income_snapshot, assess_income_research_quality
+
+    snapshot = {"version": 1, "name": "Test", "kind": "comparison",
+                "inputs": {"principal": 1000, "months": 12, "methods": [
+                    {"method": "Hold", "apr_pct": 0, "fee_pct": 0, "price_change_pct": 0}
+                ]}}
+    with pytest.raises(ValueError):
+        validate_income_snapshot({**snapshot, "research": {"risk_notes": 123}})
+    flagged = assess_income_research_quality({
+        **snapshot, "research": {"checked_on": "2999-01-01"}
+    })
+    assert any("non-future" in message for message in flagged["warnings"])
