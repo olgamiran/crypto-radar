@@ -109,3 +109,62 @@ def compare_income_methods(
             "Virtual return (%)": result["return_pct"],
         })
     return rows
+
+
+def stress_test_income_methods(
+    principal: float,
+    months: int,
+    assumptions: list[dict[str, float | str]],
+    apr_cut_pct: float = 50.0,
+    price_shock_pct: float = -30.0,
+    loss_haircut_pct: float = 25.0,
+) -> list[dict[str, float | str]]:
+    """Independent hypothetical shocks applied to each method's baseline.
+
+    APR cut is a relative reduction to the assumed APR. Price shock is an
+    additional percentage-point change to the method's baseline price change,
+    capped at -100%. Loss haircut is a fraction of the final recoverable
+    balance; it does not estimate a probability of default.
+    """
+    import math
+
+    shocks = (float(apr_cut_pct), float(price_shock_pct), float(loss_haircut_pct))
+    if not all(map(math.isfinite, shocks)):
+        raise ValueError("Stress-test shocks must be finite.")
+    if not 0 <= apr_cut_pct <= 100 or not -100 <= price_shock_pct <= 0:
+        raise ValueError("APR cut and price shock are outside allowed ranges.")
+    if not 0 <= loss_haircut_pct <= 100:
+        raise ValueError("Loss haircut must be between 0 and 100 percent.")
+
+    # Reuse comparison validation so the stress test and baseline agree.
+    baseline = compare_income_methods(principal, months, 0.0, assumptions)
+    results = []
+    for item, base in zip(assumptions, baseline):
+        apr = float(item["apr_pct"])
+        fee = float(item["fee_pct"])
+        price = float(item.get("price_change_pct", 0.0))
+        scenarios = [
+            ("Baseline", apr, price, 0.0),
+            ("APR reduction", apr * (1 - apr_cut_pct / 100), price, 0.0),
+            ("Additional price decline", apr, max(-100.0, price + price_shock_pct), 0.0),
+            ("Partial capital loss", apr, price, loss_haircut_pct),
+            ("Combined shocks", apr * (1 - apr_cut_pct / 100),
+             max(-100.0, price + price_shock_pct), loss_haircut_pct),
+        ]
+        for label, scenario_apr, scenario_price, haircut in scenarios:
+            modeled = calculate_income_scenario(
+                principal, scenario_apr, months, scenario_price, fee
+            )
+            ending = modeled["ending_value"] * (1 - haircut / 100)
+            results.append({
+                "Method": str(item["method"]),
+                "Scenario": label,
+                "APR (%)": scenario_apr,
+                "Asset price change (%)": scenario_price,
+                "Capital loss haircut (%)": haircut,
+                "Virtual ending value ($)": ending,
+                "Virtual profit / loss ($)": ending - principal,
+                "Virtual return (%)": (ending / principal - 1) * 100,
+                "Change vs baseline ($)": ending - float(base["Virtual ending value ($)"]),
+            })
+    return results
