@@ -23,6 +23,7 @@ A beginner-friendly crypto market dashboard, backtesting lab, and **virtual cryp
 - **Crypto Income Lab:** estimate hypothetical rewards using an assumed APR, duration, and one-off fee
 - **Virtual income-method comparison:** compare buy-and-hold, native staking, centralized lending, DeFi lending, and stablecoin yield using user-entered APR, fees, and separate volatile-asset/depeg price scenarios; export CSV and inspect qualitative liquidity and risk notes
 - **Price stress test:** compare illustrative -50%, -20%, 0%, and +20% price-change scenarios
+- **Saved income research scenarios:** keep up to 30 comparison/stress assumptions per browser session; export/import validated versioned JSON backups and recalculate results without trusting stored outputs
 - **Passive-income risk stress test:** apply independent APR cuts, additional asset-price declines, and capital-loss haircuts, plus a combined-shock scenario; compare hypothetical ending balances and export CSV
 - **Virtual Portfolio:** record simulated buys, sells, reward credits, and fees; mark positions to manually entered prices; review cash, holdings, equity, and profit/loss
 - CSV export of the virtual transaction ledger
@@ -187,3 +188,7 @@ Paper Trading replays historical daily candles; it is not a persistent live simu
 ## Passive-income risk stress test
 
 In Crypto Income Lab, enter a virtual balance, duration, assumed APR, fee, and baseline asset-price change. The risk stress test shows five outcomes: baseline, APR reduction, additional price decline, capital-loss haircut, and combined shocks. APR cuts are relative reductions of the assumed annual rate for the entire modeled period. Price shocks are additional percentage-point declines capped at -100%; capital-loss haircuts reduce the recoverable final balance after other modeled effects. These are user-defined illustrations, **not** estimates of likelihood, statistical worst cases, or financial recommendations. The calculator cannot model insolvency resolution, withdrawal freezes, smart-contract exploits, tax treatment, or changing rates through time.
+
+## Save and restore income research
+
+After running a method comparison or passive-income stress test, open **Saved virtual research scenarios** in Crypto Income Lab. Give the latest calculation a name and save it for the current Streamlit session. Download its JSON backup for long-term local storage; upload that file and select **Import saved scenario** to restore it in another session. Select **Recalculate saved scenario** to regenerate results from the original assumptions. This is not a server-side account or durable database: session entries may disappear when the session ends, so download backups you want to keep. JSON imports are validated and capped at 100 KB; the app stores no wallet credentials or real transactions.
