@@ -30,6 +30,7 @@ A beginner-friendly crypto market dashboard, backtesting lab, and **virtual cryp
 - **Virtual Portfolio:** record simulated buys, sells, reward credits, and fees; mark positions to manually entered prices; review cash, holdings, equity, and profit/loss
 - CSV export of the virtual transaction ledger
 - Portable JSON backup and restore for the virtual portfolio
+- **Yield research overview:** filter all educational mechanisms by qualitative risk, liquidity/withdrawal type, and saved research documentation completeness; export filtered CSV without implying live APY or a safety ranking
 - **Yield Research:** compare buy-and-hold, native staking, centralized lending, DeFi lending, stablecoin yield, and liquidity provision with liquidity notes, qualitative risks, and due-diligence questions; no stale or invented APY claims
 - Automated tests for backtesting, paper trading, income scenarios, portfolio accounting, and yield research
 - GitHub Actions workflow configured to run tests on pushes and pull requests
@@ -202,3 +203,7 @@ The **Research journal** appears after saving at least one income-method compari
 ## Research documentation quality
 
 In **Saved virtual research scenarios**, select a scenario and record the source or explanation for rate/fee assumptions, the date checked, withdrawal conditions, and key risks. Notes are saved with the scenario and included in its downloadable JSON backup. The research journal displays completeness and warnings, including missing notes, comparison-only snapshots without combined-shock stress testing, and APR assumptions over 30% that warrant extra scrutiny. A fully documented scenario is **not necessarily safe, accurate, or attractive**; the checks assess documentation only. Date strings are checked for validity and future dates are flagged.
+
+## Yield research overview
+
+The **Yield Research** tab now includes a filterable overview of six educational mechanisms. Filter by category, broad qualitative risk, withdrawal/liquidity considerations, and research-documentation coverage. Saved Crypto Income Lab scenarios are matched to catalogue mechanisms when their method names correspond, and the strongest documentation coverage is displayed. Coverage reflects only the current Streamlit session; it does not establish that sources are accurate or a product is safe. The overview is not a live APY feed, investment recommendation, or quantitative risk ranking. Export filtered results as CSV.
