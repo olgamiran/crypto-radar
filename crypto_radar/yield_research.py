@@ -110,6 +110,7 @@ def build_yield_research_overview(snapshots: list[dict] | None = None) -> list[d
     name_to_id = {item["name"].casefold(): item["id"] for item in catalogue}
     # The comparison UI uses the shorter stablecoin label.
     name_to_id["stablecoin yield"] = "stablecoin-yield"
+    name_to_id["centralized lending"] = "centralized-lending"
     for raw in snapshots or []:
         saved = validate_income_snapshot(raw)
         assessment = assess_income_research_quality(saved)
