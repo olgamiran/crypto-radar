@@ -5,7 +5,7 @@ import streamlit as st
 
 from crypto_radar.backtest import compare_execution_cost_scenarios, compare_sma_parameter_sets, run_backtest, summarize_walk_forward_stability, walk_forward_sma_evaluation
 from crypto_radar.data import SYMBOLS, assess_price_data, fetch_prices
-from crypto_radar.income import build_scenarios, calculate_income_scenario, compare_income_methods, stress_test_income_methods
+from crypto_radar.income import build_scenarios, calculate_income_scenario, compare_income_methods, stress_test_income_methods, validate_income_snapshot, evaluate_income_snapshot
 from crypto_radar.portfolio import build_portfolio_snapshot
 from crypto_radar.paper_trading import simulate_sma_paper_trades
 import json
@@ -394,6 +394,7 @@ with income_tab:
             comparison_rows = compare_income_methods(
                 virtual_amount, comparison_months, volatile_change, method_assumptions
             )
+            st.session_state["income_latest_snapshot"] = {"version": 1, "name": "Method comparison", "kind": "comparison", "inputs": {"principal": virtual_amount, "months": comparison_months, "methods": method_assumptions}}
             comparison_table = pd.DataFrame(comparison_rows)
             st.dataframe(comparison_table.round(2), use_container_width=True, hide_index=True)
             st.bar_chart(
@@ -448,6 +449,7 @@ with income_tab:
             price_shock_pct=stress_price_shock,
             loss_haircut_pct=stress_haircut,
         )
+        st.session_state["income_latest_snapshot"] = {"version": 1, "name": "Risk stress test", "kind": "stress", "inputs": {"principal": stress_principal, "months": stress_months, "methods": [{"method": stress_method, "apr_pct": 0.0 if stress_method == "Buy and hold" else stress_apr, "fee_pct": stress_fee, "price_change_pct": stress_price}], "apr_cut_pct": stress_apr_cut, "price_shock_pct": stress_price_shock, "loss_haircut_pct": stress_haircut}}
         stress_table = pd.DataFrame(stress_rows)
         st.dataframe(stress_table.round(2), use_container_width=True, hide_index=True)
         st.bar_chart(
@@ -471,6 +473,66 @@ with income_tab:
             "Real-world losses, depegs, frozen withdrawals, and insolvency may behave differently. "
             "The model does not forecast returns or evaluate specific providers."
         )
+
+    st.divider()
+    st.subheader("💾 Saved virtual research scenarios")
+    st.write("Save comparison or stress-test assumptions for this browser session, or download a JSON backup to restore later. No accounts, wallets or real assets are stored.")
+    if "income_saved_snapshots" not in st.session_state:
+        st.session_state["income_saved_snapshots"] = []
+    latest_snapshot = st.session_state.get("income_latest_snapshot")
+    if latest_snapshot:
+        snapshot_name = st.text_input("Name your latest scenario", value=latest_snapshot["name"], max_chars=80, key="income_snapshot_name")
+        if st.button("Save latest scenario", key="income_save_snapshot"):
+            try:
+                candidate = validate_income_snapshot({**latest_snapshot, "name": snapshot_name})
+                if len(st.session_state["income_saved_snapshots"]) >= 30:
+                    st.warning("Maximum 30 saved scenarios per session. Remove one before saving.")
+                else:
+                    st.session_state["income_saved_snapshots"].append(candidate)
+                    st.success("Saved for this browser session. Download JSON to keep it after the session ends.")
+            except ValueError as error:
+                st.error(str(error))
+    uploaded_income = st.file_uploader("Restore a scenario JSON file", type=["json"], key="income_snapshot_upload")
+    if uploaded_income is not None and st.button("Import saved scenario", key="income_import_snapshot"):
+        try:
+            if uploaded_income.size > 100_000:
+                raise ValueError("JSON file is too large (maximum 100 KB).")
+            restored = validate_income_snapshot(json.loads(uploaded_income.getvalue().decode("utf-8")))
+            if len(st.session_state["income_saved_snapshots"]) >= 30:
+                raise ValueError("Maximum 30 saved scenarios per session.")
+            st.session_state["income_saved_snapshots"].append(restored)
+            st.success("Scenario imported. Select it below to recalculate.")
+        except (ValueError, UnicodeDecodeError, json.JSONDecodeError, TypeError) as error:
+            st.error(f"Cannot import scenario: {error}")
+    saved_snapshots = st.session_state["income_saved_snapshots"]
+    if saved_snapshots:
+        selected_index = st.selectbox(
+            "Saved scenarios", range(len(saved_snapshots)),
+            format_func=lambda i: f"{i + 1}. {saved_snapshots[i]['name']} ({saved_snapshots[i]['kind']})",
+            key="income_selected_snapshot",
+        )
+        selected_snapshot = saved_snapshots[selected_index]
+        st.download_button(
+            "Download selected scenario (JSON)",
+            data=json.dumps(selected_snapshot, ensure_ascii=False, indent=2).encode("utf-8"),
+            file_name="crypto_radar_income_scenario.json",
+            mime="application/json",
+        )
+        if st.button("Recalculate saved scenario", key="income_replay_snapshot"):
+            try:
+                replay_table = pd.DataFrame(evaluate_income_snapshot(selected_snapshot))
+                st.dataframe(replay_table.round(2), use_container_width=True, hide_index=True)
+                st.bar_chart(replay_table.set_index(
+                    "Scenario" if selected_snapshot["kind"] == "stress" else "Method"
+                )[["Virtual ending value ($)"]])
+            except ValueError as error:
+                st.error(f"Cannot recalculate scenario: {error}")
+        if st.button("Remove selected scenario", key="income_delete_snapshot"):
+            saved_snapshots.pop(selected_index)
+            st.rerun()
+    else:
+        st.caption("No saved scenarios yet. Run a method comparison or risk stress test first.")
+    st.caption("Session storage is temporary. Download JSON for durable local backup; imported values are validated and results are recalculated.")
 
     with st.expander("Assumptions and limitations"):
         st.markdown("""
