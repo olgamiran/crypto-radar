@@ -258,3 +258,54 @@ def build_income_research_journal(snapshots: list[dict]) -> list[dict]:
                 "Return (%)": outcome["Virtual return (%)"],
             })
     return rows
+
+
+def assess_income_research_quality(snapshot: dict) -> dict:
+    """Check documentation completeness, not investment merit or safety.
+
+    Metadata is optional and kept outside calculation inputs so older JSON
+    snapshots remain valid. Missing evidence never becomes an invented source.
+    """
+    saved = validate_income_snapshot(snapshot)
+    evidence = snapshot.get("research", {})
+    if not isinstance(evidence, dict):
+        raise ValueError("Research metadata must be an object.")
+    fields = ("assumption_source", "checked_on", "withdrawal_terms", "risk_notes")
+    supplied = {}
+    for field in fields:
+        value = evidence.get(field, "")
+        if not isinstance(value, str) or len(value) > 1000:
+            raise ValueError(f"Invalid research field: {field}.")
+        supplied[field] = value.strip()
+    warnings = []
+    for field, description in (
+        ("assumption_source", "Document where the APR and fee assumptions came from."),
+        ("checked_on", "Record when the assumptions were checked (YYYY-MM-DD)."),
+        ("withdrawal_terms", "Document withdrawal restrictions or lock-up conditions."),
+        ("risk_notes", "Document key loss, custody and protocol risks."),
+    ):
+        if not supplied[field]:
+            warnings.append(description)
+    if supplied["checked_on"]:
+        from datetime import date
+        try:
+            checked = date.fromisoformat(supplied["checked_on"])
+            if checked.isoformat() != supplied["checked_on"] or checked > date.today():
+                raise ValueError
+        except ValueError:
+            warnings.append("Use a valid, non-future YYYY-MM-DD verification date.")
+    if saved["kind"] == "comparison":
+        warnings.append("No combined-shock stress scenario is included in this saved comparison.")
+    for method in saved["inputs"]["methods"]:
+        if method["apr_pct"] > 30:
+            warnings.append(f"{method['method']}: APR above 30% needs extra verification; this is not a risk score.")
+    completed = sum(bool(supplied[field]) for field in fields)
+    return {
+        "name": saved["name"],
+        "kind": saved["kind"],
+        "documented_fields": completed,
+        "total_fields": len(fields),
+        "has_stress_test": saved["kind"] == "stress",
+        "warnings": warnings,
+        "documentation_status": "Documented" if completed == len(fields) and not warnings else "Needs review",
+    }
