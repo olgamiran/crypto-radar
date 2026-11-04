@@ -5,7 +5,7 @@ import streamlit as st
 
 from crypto_radar.backtest import compare_execution_cost_scenarios, compare_sma_parameter_sets, run_backtest, summarize_walk_forward_stability, walk_forward_sma_evaluation
 from crypto_radar.data import SYMBOLS, assess_price_data, fetch_prices
-from crypto_radar.income import build_scenarios, calculate_income_scenario, compare_income_methods
+from crypto_radar.income import build_scenarios, calculate_income_scenario, compare_income_methods, stress_test_income_methods
 from crypto_radar.portfolio import build_portfolio_snapshot
 from crypto_radar.paper_trading import simulate_sma_paper_trades
 import json
@@ -419,6 +419,58 @@ with income_tab:
                 "withdrawal freezes, taxes and changing reward rates. Stablecoins can depeg. "
                 "A larger hypothetical ending value does not mean a safer or better investment."
             )
+
+    st.divider()
+    st.subheader("🛡️ Passive-income risk stress test")
+    st.write("Explore independent hypothetical shocks and a combined worst-case illustration. This does not assign probabilities to any event.")
+    with st.form("income_risk_stress"):
+        stress_principal = st.number_input("Stress-test virtual balance (USD)", 1.0, 1_000_000_000.0, 1000.0, step=100.0)
+        stress_months = st.slider("Stress-test duration (months)", 1, 60, 12)
+        stress_method = st.selectbox("Method to stress-test", list(method_catalog))
+        stress_apr = st.number_input("Assumed APR (%)", 0.0, 1000.0, 0.0, step=0.5,
+                                     disabled=stress_method == "Buy and hold")
+        stress_fee = st.number_input("Assumed one-off fee (%)", 0.0, 99.0, 0.0, step=0.1)
+        stress_price = st.slider("Baseline asset price change (%)", -100, 100, 0, step=5)
+        stress_apr_cut = st.slider("APR reduction (%)", 0, 100, 50, step=5)
+        stress_price_shock = st.slider("Additional price decline (percentage points)", -100, 0, -30, step=5)
+        stress_haircut = st.slider("Capital loss / unrecovered balance (%)", 0, 100, 25, step=5)
+        stress_submitted = st.form_submit_button("Run virtual stress test")
+    if stress_submitted:
+        stress_rows = stress_test_income_methods(
+            stress_principal, stress_months,
+            [{
+                "method": stress_method,
+                "apr_pct": 0.0 if stress_method == "Buy and hold" else stress_apr,
+                "fee_pct": stress_fee,
+                "price_change_pct": stress_price,
+            }],
+            apr_cut_pct=stress_apr_cut,
+            price_shock_pct=stress_price_shock,
+            loss_haircut_pct=stress_haircut,
+        )
+        stress_table = pd.DataFrame(stress_rows)
+        st.dataframe(stress_table.round(2), use_container_width=True, hide_index=True)
+        st.bar_chart(
+            stress_table.set_index("Scenario")[["Virtual ending value ($)"]],
+            x_label="Hypothetical shock", y_label="Virtual ending value (USD)"
+        )
+        st.download_button(
+            "Download passive-income stress test (CSV)",
+            data=stress_table.to_csv(index=False).encode("utf-8"),
+            file_name="virtual_income_risk_stress.csv",
+            mime="text/csv",
+        )
+        st.caption(
+            "APR reduction lowers the assumed rate for the entire period. The price decline "
+            "is added to the baseline price change and capped at -100%. The capital-loss haircut "
+            "reduces the modeled final recoverable value after fees and price changes. "
+            "Combined shocks apply all three; this is not a statistically estimated worst case."
+        )
+        st.warning(
+            "Capital-loss percentages are illustrative, not default probabilities. "
+            "Real-world losses, depegs, frozen withdrawals, and insolvency may behave differently. "
+            "The model does not forecast returns or evaluate specific providers."
+        )
 
     with st.expander("Assumptions and limitations"):
         st.markdown("""
