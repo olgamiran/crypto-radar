@@ -23,6 +23,7 @@ A beginner-friendly crypto market dashboard, backtesting lab, and **virtual cryp
 - **Crypto Income Lab:** estimate hypothetical rewards using an assumed APR, duration, and one-off fee
 - **Virtual income-method comparison:** compare buy-and-hold, native staking, centralized lending, DeFi lending, and stablecoin yield using user-entered APR, fees, and separate volatile-asset/depeg price scenarios; export CSV and inspect qualitative liquidity and risk notes
 - **Price stress test:** compare illustrative -50%, -20%, 0%, and +20% price-change scenarios
+- **Passive-income risk stress test:** apply independent APR cuts, additional asset-price declines, and capital-loss haircuts, plus a combined-shock scenario; compare hypothetical ending balances and export CSV
 - **Virtual Portfolio:** record simulated buys, sells, reward credits, and fees; mark positions to manually entered prices; review cash, holdings, equity, and profit/loss
 - CSV export of the virtual transaction ledger
 - Portable JSON backup and restore for the virtual portfolio
@@ -182,3 +183,7 @@ The repository includes `.streamlit/config.toml` with basic server defaults. Do 
 Streamlit session state is temporary. The virtual portfolio is not a cloud database: a session can reset after a browser reconnect, app restart, or redeploy. Export the CSV ledger and download a JSON backup regularly if you want to keep your virtual records. A downloaded backup stays on your own device unless you choose to share it.
 
 Paper Trading replays historical daily candles; it is not a persistent live simulation and does not submit orders. Results depend on the selected date range, SMA windows, fees, and estimated slippage. Treat all outputs as educational experiments rather than forecasts or financial advice.
+
+## Passive-income risk stress test
+
+In Crypto Income Lab, enter a virtual balance, duration, assumed APR, fee, and baseline asset-price change. The risk stress test shows five outcomes: baseline, APR reduction, additional price decline, capital-loss haircut, and combined shocks. APR cuts are relative reductions of the assumed annual rate for the entire modeled period. Price shocks are additional percentage-point declines capped at -100%; capital-loss haircuts reduce the recoverable final balance after other modeled effects. These are user-defined illustrations, **not** estimates of likelihood, statistical worst cases, or financial recommendations. The calculator cannot model insolvency resolution, withdrawal freezes, smart-contract exploits, tax treatment, or changing rates through time.
