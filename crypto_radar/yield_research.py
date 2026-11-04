@@ -84,3 +84,81 @@ def get_research_methods(category: str | None = None) -> list[dict[str, str]]:
 def get_categories() -> list[str]:
     """Return available category filters in stable display order."""
     return ["All", *dict.fromkeys(item["category"] for item in _YIELD_METHODS)]
+
+
+# These are broad qualitative labels, not measured liquidity or safety scores.
+_LIQUIDITY_LABELS = {
+    "hold": "Market-dependent",
+    "native-staking": "Unbonding / lock-up possible",
+    "centralized-lending": "Provider withdrawal restrictions",
+    "defi-lending": "Pool liquidity-dependent",
+    "stablecoin-yield": "Redemption / provider-dependent",
+    "liquidity-provision": "Pool liquidity-dependent",
+}
+
+
+def build_yield_research_overview(snapshots: list[dict] | None = None) -> list[dict]:
+    """Join educational method categories with saved documentation coverage.
+
+    A saved snapshot counts as researched only when its method name matches the
+    catalogue; no APY, safety rating or live provider claim is inferred.
+    """
+    from crypto_radar.income import assess_income_research_quality, validate_income_snapshot
+
+    evidence_by_method: dict[str, list[dict]] = {}
+    catalogue = get_research_methods()
+    name_to_id = {item["name"].casefold(): item["id"] for item in catalogue}
+    # The comparison UI uses the shorter stablecoin label.
+    name_to_id["stablecoin yield"] = "stablecoin-yield"
+    for raw in snapshots or []:
+        saved = validate_income_snapshot(raw)
+        assessment = assess_income_research_quality(saved)
+        for method in saved["inputs"]["methods"]:
+            method_id = name_to_id.get(method["method"].casefold())
+            if method_id:
+                evidence_by_method.setdefault(method_id, []).append(assessment)
+    rows = []
+    for item in catalogue:
+        matched = evidence_by_method.get(item["id"], [])
+        best = max((entry["documented_fields"] for entry in matched), default=0)
+        rows.append({
+            "Method": item["name"],
+            "Category": item["category"],
+            "General risk": item["risk_level"],
+            "Liquidity type": _LIQUIDITY_LABELS[item["id"]],
+            "Saved scenarios": len(matched),
+            "Best documentation": f"{best}/4" if matched else "Not researched",
+            "Has documented stress test": any(
+                entry["has_stress_test"] and entry["documented_fields"] == 4
+                for entry in matched
+            ),
+            "Key risks": item["key_risks"],
+        })
+    return rows
+
+
+def filter_yield_research_overview(
+    rows: list[dict], category: str = "All", risk: str = "All",
+    liquidity: str = "All", documentation: str = "All",
+) -> list[dict]:
+    """Filter categorical research information without ranking risk."""
+    if documentation not in ("All", "No saved research", "Partially documented", "Fully documented"):
+        raise ValueError("Unknown documentation filter.")
+    filtered = []
+    for row in rows:
+        if category != "All" and row["Category"] != category:
+            continue
+        if risk != "All" and row["General risk"] != risk:
+            continue
+        if liquidity != "All" and row["Liquidity type"] != liquidity:
+            continue
+        saved = row["Saved scenarios"]
+        coverage = row["Best documentation"]
+        if documentation == "No saved research" and saved:
+            continue
+        if documentation == "Partially documented" and (not saved or coverage == "4/4"):
+            continue
+        if documentation == "Fully documented" and coverage != "4/4":
+            continue
+        filtered.append(row)
+    return filtered
