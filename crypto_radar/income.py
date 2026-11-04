@@ -211,7 +211,20 @@ def validate_income_snapshot(snapshot: object) -> dict:
             if not isinstance(value, (int, float)) or isinstance(value, bool) or not math.isfinite(value) or not minimum <= value <= maximum:
                 raise ValueError(f"Invalid stress assumption: {key}.")
             cleaned[key] = float(value)
-    return {"version": 1, "name": name.strip(), "kind": kind, "inputs": cleaned}
+    result = {"version": 1, "name": name.strip(), "kind": kind, "inputs": cleaned}
+    if "research" in snapshot:
+        research = snapshot["research"]
+        if not isinstance(research, dict):
+            raise ValueError("Research metadata must be an object.")
+        fields = ("assumption_source", "checked_on", "withdrawal_terms", "risk_notes")
+        normalized = {}
+        for field in fields:
+            value = research.get(field, "")
+            if not isinstance(value, str) or len(value) > 1000:
+                raise ValueError(f"Invalid research field: {field}.")
+            normalized[field] = value.strip()
+        result["research"] = normalized
+    return result
 
 
 def evaluate_income_snapshot(snapshot: dict) -> list[dict]:
