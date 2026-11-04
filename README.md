@@ -30,6 +30,7 @@ A beginner-friendly crypto market dashboard, backtesting lab, and **virtual cryp
 - **Virtual Portfolio:** record simulated buys, sells, reward credits, and fees; mark positions to manually entered prices; review cash, holdings, equity, and profit/loss
 - CSV export of the virtual transaction ledger
 - Portable JSON backup and restore for the virtual portfolio
+- **Opportunity research cards:** manually document specific crypto yield protocols/products, verification source/date, asset/chain, observed rate, withdrawal terms and risks; validate inputs, export CSV and portable JSON backups
 - **Yield research overview:** filter all educational mechanisms by qualitative risk, liquidity/withdrawal type, and saved research documentation completeness; export filtered CSV without implying live APY or a safety ranking
 - **Yield Research:** compare buy-and-hold, native staking, centralized lending, DeFi lending, stablecoin yield, and liquidity provision with liquidity notes, qualitative risks, and due-diligence questions; no stale or invented APY claims
 - Automated tests for backtesting, paper trading, income scenarios, portfolio accounting, and yield research
@@ -207,3 +208,7 @@ In **Saved virtual research scenarios**, select a scenario and record the source
 ## Yield research overview
 
 The **Yield Research** tab now includes a filterable overview of six educational mechanisms. Filter by category, broad qualitative risk, withdrawal/liquidity considerations, and research-documentation coverage. Saved Crypto Income Lab scenarios are matched to catalogue mechanisms when their method names correspond, and the strongest documentation coverage is displayed. Coverage reflects only the current Streamlit session; it does not establish that sources are accurate or a product is safe. The overview is not a live APY feed, investment recommendation, or quantitative risk ranking. Export filtered results as CSV.
+
+## Opportunity research cards
+
+Under **Yield Research → Research opportunity cards**, create a manually entered note for a specific protocol or product. Record its name, provider, mechanism, asset, network, primary source URL, date checked, optional observed APR, reward mechanism, withdrawal terms and risks. The app validates inputs, displays documentation gaps, supports CSV export and per-card JSON export/import. Up to 50 cards can be kept in the current browser session; download JSON for durable backup. These are **user-supplied, unverified research notes**, not a feed of current opportunities, a provider endorsement, a recommendation, or a guarantee. Never enter wallet keys, passwords or other secrets.
