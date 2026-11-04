@@ -224,3 +224,37 @@ def evaluate_income_snapshot(snapshot: dict) -> list[dict]:
             data["apr_cut_pct"], data["price_shock_pct"], data["loss_haircut_pct"],
         )
     return compare_income_methods(data["principal"], data["months"], 0.0, data["methods"])
+
+
+def build_income_research_journal(snapshots: list[dict]) -> list[dict]:
+    """Flatten saved hypothetical research into comparable, clearly scoped rows.
+
+    A comparison method yields one baseline row. A stress experiment yields
+    baseline and combined-shock rows. Different principal/duration assumptions
+    are displayed rather than silently treated as comparable dollar outcomes.
+    """
+    if not isinstance(snapshots, list) or len(snapshots) > 30:
+        raise ValueError("Research journal supports up to 30 snapshots.")
+    rows = []
+    for index, raw in enumerate(snapshots, start=1):
+        snapshot = validate_income_snapshot(raw)
+        inputs = snapshot["inputs"]
+        for outcome in evaluate_income_snapshot(snapshot):
+            scenario = outcome.get("Scenario", "Baseline")
+            if scenario not in ("Baseline", "Combined shocks"):
+                continue
+            rows.append({
+                "Saved #": index,
+                "Research name": snapshot["name"],
+                "Kind": snapshot["kind"],
+                "Method": outcome["Method"],
+                "Scenario": scenario,
+                "Starting balance ($)": inputs["principal"],
+                "Duration (months)": inputs["months"],
+                "Assumed APR (%)": outcome.get("APR (%)", outcome.get("Assumed APR (%)")),
+                "Asset price change (%)": outcome["Asset price change (%)"],
+                "Ending value ($)": outcome["Virtual ending value ($)"],
+                "Profit / loss ($)": outcome["Virtual profit / loss ($)"],
+                "Return (%)": outcome["Virtual return (%)"],
+            })
+    return rows
