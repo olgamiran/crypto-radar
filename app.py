@@ -9,7 +9,7 @@ from crypto_radar.income import build_scenarios, calculate_income_scenario, comp
 from crypto_radar.portfolio import build_portfolio_snapshot
 from crypto_radar.paper_trading import simulate_sma_paper_trades
 import json
-from crypto_radar.yield_research import get_categories, get_research_methods
+from crypto_radar.yield_research import get_categories, get_research_methods, build_yield_research_overview, filter_yield_research_overview
 
 st.set_page_config(page_title="Crypto Radar", page_icon="📡", layout="wide")
 st.title("📡 Crypto Radar")
@@ -806,6 +806,44 @@ with yield_tab:
 
         Rates are intentionally not copied into this app: providers can change them and APY figures are not directly comparable. When evaluating a rate, record the source URL, observation date/time, chain, exact pool/product, token pair, lock-up, fees, and whether incentives are included.
         """)
+
+    st.subheader("🗂️ Research overview")
+    st.write("Filter educational yield mechanisms by qualitative risk, withdrawal/liquidity type, and documentation coverage from your saved virtual research.")
+    overview_rows = build_yield_research_overview(st.session_state.get("income_saved_snapshots", []))
+    risk_options = ["All", *dict.fromkeys(row["General risk"] for row in overview_rows)]
+    liquidity_options = ["All", *dict.fromkeys(row["Liquidity type"] for row in overview_rows)]
+    o1, o2 = st.columns(2)
+    overview_category = o1.selectbox("Overview category", get_categories(), key="yield_overview_category")
+    overview_risk = o2.selectbox("Qualitative risk", risk_options, key="yield_overview_risk")
+    o3, o4 = st.columns(2)
+    overview_liquidity = o3.selectbox("Liquidity / withdrawal type", liquidity_options, key="yield_overview_liquidity")
+    overview_documentation = o4.selectbox(
+        "Research documentation", ["All", "No saved research", "Partially documented", "Fully documented"],
+        key="yield_overview_documentation",
+    )
+    overview_filtered = filter_yield_research_overview(
+        overview_rows, overview_category, overview_risk,
+        overview_liquidity, overview_documentation,
+    )
+    st.caption(f"Showing {len(overview_filtered)} of {len(overview_rows)} educational mechanisms.")
+    if overview_filtered:
+        overview_table = pd.DataFrame(overview_filtered)
+        st.dataframe(overview_table, use_container_width=True, hide_index=True)
+        st.download_button(
+            "Download filtered yield overview (CSV)",
+            data=overview_table.to_csv(index=False).encode("utf-8"),
+            file_name="crypto_radar_yield_research_overview.csv",
+            mime="text/csv",
+            key="yield_overview_download",
+        )
+    else:
+        st.info("No mechanisms match these filters. Broaden your selection.")
+    st.caption(
+        "Risk and liquidity labels are broad educational descriptions, not measured scores or live product conditions. "
+        "Documentation coverage uses only saved scenarios in this session and does not prove accuracy or safety. "
+        "No live APY figures or recommendations are provided."
+    )
+    st.divider()
 
     category = st.selectbox("Filter by mechanism", get_categories(), key="yield_category_filter")
     methods = get_research_methods(category)
